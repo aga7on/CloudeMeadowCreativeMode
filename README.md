@@ -1,5 +1,5 @@
 # CloudeMeadowCreativeMode
-Simple Cheat Mod for Clound Meadow using BepInEx WORK IN PROGRESS!!!
+**Simple Cheat Mod for Clound Meadow using BepInEx WORK IN PROGRESS!!!**
 
 Brief Installation Guide
 Copy the mod file CloudMeadowCreativeMode.dll into the BepInEx/plugins folder of your Cloud Meadow game. The mod requires BepInEx 5 pre-installed and uses libraries from Cloud Meadow_Data/Managed (Unity 2017.4, .NET 3.5) .
