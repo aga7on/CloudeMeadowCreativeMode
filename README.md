@@ -30,7 +30,9 @@ F8 — rescan objects
 
 WORK IN PROGRESS!!!
 
------------------\\\\\ Russian
+# Russian
+**Simple Cheat Mod for Clound Meadow using BepInEx WORK IN PROGRESS!!!**
+
 
 Краткая инструкция по установке WORK IN PROGRESS!!!
 Скопируйте файл мода CloudMeadowCreativeMode.dll в папку BepInEx/plugins игры Cloud Meadow. Мод требует предустановленный BepInEx 5 и использует библиотеки из Cloud Meadow_Data/Managed (Unity 2017.4, .NET 3.5) .
