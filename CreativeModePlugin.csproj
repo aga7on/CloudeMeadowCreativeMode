@@ -83,6 +83,11 @@
     <Compile Include="Plugin.cs" />
     <Compile Include="ReflectionUtil.cs" />
     <Compile Include="UIOverlay.cs" />
+    <Compile Include="UIOverlay.Player.cs" />
+    <Compile Include="UIOverlay.Farm.cs" />
+    <Compile Include="UIOverlay.Inventory.cs" />
+    <Compile Include="UIOverlay.Cheats.cs" />
+    <Compile Include="UIOverlay.OverviewParty.cs" />
     <Compile Include="GameApi.cs" />
     <Compile Include="LogSink.cs" />
     <Compile Include="GameEventsListener.cs" />
