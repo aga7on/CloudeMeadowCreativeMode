@@ -15,9 +15,7 @@ Party — companion management (Level to 20, Recruit all L15)
 
 Farm — time control (07:00/14:00/20:00), monster management, their stats and Traits
 
-Traits — search and dump Trait/Status objects
-
-All Roots — full dump of root objects for diagnostics
+Items - Control items in Inventory and upgrade their tier
 
 Cheats — quick access to money, seasons, weather, gallery .
 
@@ -48,9 +46,7 @@ Party — управление компаньонами (Level to 20, Recruit al
 
 Farm — управление временем (07:00/14:00/20:00), монстрами, их стats и Traits
 
-Traits — поиск и дамп объектов Trait/Status
-
-All Roots — полный дамп корневых объектов для диагностики
+Items - управление инвентарем и качеством предметов в инвентаре
 
 Cheats — быстрый доступ к деньгам, сезонам, погоде, галерее .
 
