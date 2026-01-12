@@ -12,7 +12,7 @@ The mod adds a **Creative Mode** menu to Cloud Meadow (opened with F6) that give
 - **Farm & monsters**: change time, day, season, weather, manage eggs, change monster species and gender, and fully edit their traits (add, remove, max level, export trait report).
 - **Inventory**: view all inventory entries, filter by name, increase stack size, set max item quality, or spawn any item from the game’s item list.
 - **Cheats**: mass-give money and resources, unlock all farm upgrades, water/grow all crops, get every monster, auto-level party/monsters, upgrade all abilities, and unlock the entire gallery.
-- 
+  
 # Russian
 Мод добавляет в Cloud Meadow «креативный режим»: отдельное меню по F6 с читами и удобными настройками фермы, героя, монстров и инвентаря.
 ## Основная идея
