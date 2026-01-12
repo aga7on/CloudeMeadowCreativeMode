@@ -1,60 +1,29 @@
 # CloudeMeadowCreativeMode
-**Simple Cheat Mod for Clound Meadow using BepInEx WORK IN PROGRESS!!!**
+The mod adds a **Creative Mode** menu to Cloud Meadow (opened with F6) that gives easy cheats and controls for your farm, character, monsters, inventory, and gallery.
 
-Brief Installation Guide
-Copy the mod file CloudMeadowCreativeMode.dll into the BepInEx/plugins folder of your Cloud Meadow game. The mod requires BepInEx 5 pre-installed and uses libraries from Cloud Meadow_Data/Managed (Unity 2017.4, .NET 3.5) .
+## What it does
 
-Internal Mod Parameters
-The mod adds an overlay (F6) with seven tabs:
+- Shows a “Creative Mode (F6)” window with tabs like Overview, Player, Farm, Inventory and Cheats, so you can change things via buttons instead of commands.
+- Lets you quickly adjust money, shards, time of day, season, weather, and other gameplay parameters while you play.
 
-Overview — status of Korona/Shards/Monsters/Season/Date/Time
+## Main features
 
-Player — edit Name, Level, Gender, Primary Stats (Physique, Stamina, Intuition, Swiftness)
-
-Party — companion management (Level to 20, Recruit all L15)
-
-Farm — time control (07:00/14:00/20:00), monster management, their stats and Traits
-
-Items - Control items in Inventory and upgrade their tier
-
-Cheats — quick access to money, seasons, weather, gallery .
-
-Settings and Hotkeys
-F6 — show/hide overlay
-
-F7 — unlock entire gallery (SaveGameManager.UnlockEverything)
-
-F8 — rescan objects
-
-WORK IN PROGRESS!!!
-
+- **Player**: edit name, level, gender, core stats (Physique, Stamina, Intuition, Swiftness) and instantly add Korona and Upgrade Shards.
+- **Farm & monsters**: change time, day, season, weather, manage eggs, change monster species and gender, and fully edit their traits (add, remove, max level, export trait report).
+- **Inventory**: view all inventory entries, filter by name, increase stack size, set max item quality, or spawn any item from the game’s item list.
+- **Cheats**: mass-give money and resources, unlock all farm upgrades, water/grow all crops, get every monster, auto-level party/monsters, upgrade all abilities, and unlock the entire gallery.
+- 
 # Russian
-**Simple Cheat Mod for Clound Meadow using BepInEx WORK IN PROGRESS!!!**
+Мод добавляет в Cloud Meadow «креативный режим»: отдельное меню по F6 с читами и удобными настройками фермы, героя, монстров и инвентаря.
+## Основная идея
 
+- Показывает всплывающее окно «Creative Mode (F6)» с вкладками Overview, Player, Farm, Inventory и Cheats.
+- Позволяет быстро менять ресурсы, время, сезон, погоду и параметры персонажей без консоли и команд.
+## Главные возможности
 
-Краткая инструкция по установке WORK IN PROGRESS!!!
-Скопируйте файл мода CloudMeadowCreativeMode.dll в папку BepInEx/plugins игры Cloud Meadow. Мод требует предустановленный BepInEx 5 и использует библиотеки из Cloud Meadow_Data/Managed (Unity 2017.4, .NET 3.5) .
+- **Игрок**: смена имени, уровня, пола, базовых статов (Physique, Stamina, Intuition, Swiftness), плюс добавление корон и шардов.
+- **Ферма и время**: переключение времени суток, дня, сезона и погоды, просмотр состояния фермы и работы с яйцами и монстрами на ферме.
+- **Монстры**: смена вида и пола, просмотр и редактирование черт (добавление, удаление, повышение уровня, отчёт по всем чертам фермы).
+- **Инвентарь**: просмотр всех предметов, фильтр по названию, увеличение стека, установка максимального качества и добавление любых предметов из списка.
+- **Читы**: много кнопок «дать всё и сразу» — деньги, шардов, все монстры, прокачка компаньонов и монстров, улучшение способностей пати, апгрейды фермы, вода/рост всех посевов и полная разблокировка галереи.
 
-Внутренние параметры мода
-Мод добавляет оверлей (F6) с семью вкладками:
-
-Overview — статус Корона/Шарды/Монстры/Сезон/Дата/Время
-
-Player — редактирование Name, Level, Gender, Primary Stats (Physique, Stamina, Intuition, Swiftness)
-
-Party — управление компаньонами (Level to 20, Recruit all L15)
-
-Farm — управление временем (07:00/14:00/20:00), монстрами, их стats и Traits
-
-Items - управление инвентарем и качеством предметов в инвентаре
-
-Cheats — быстрый доступ к деньгам, сезонам, погоде, галерее .
-
-Настройки и горячие клавиши
-F6 — показать/скрыть оверлей
-
-F7 — разблокировать всю галерею (SaveGameManager.UnlockEverything)
-
-F8 — пересканировать объекты
-
-WORK IN PROGRESS!!!
