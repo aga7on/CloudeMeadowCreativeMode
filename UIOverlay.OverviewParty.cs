@@ -6,24 +6,17 @@ namespace CloudMeadow.CreativeMode
     {
         private void DrawOverview()
         {
-            GUILayout.Label("Detected roots: " + _roots.Count);
-            if (GameApi.Ready)
-            {
-                GUILayout.Label(GameApi.BuildQuickStatus());
-            }
-            for (int i = 0; i < _roots.Count; i++)
-            {
-                var r = _roots[i];
-                if (!PassesFilter(r)) continue;
-                GUILayout.Label("- " + r.GetType().FullName);
-            }
+            GUILayout.Label("Cloud Meadow Creative Mode", GUI.skin.label);
+            GUILayout.Space(3);
+            GUILayout.Label("Utilities for easier testing and modding. Use tabs to navigate features.");
+            GUILayout.Space(8);
+            GUILayout.Label("Author: AGA7ON");
         }
 
         private bool PassesFilter(object obj)
         {
-            if (string.IsNullOrEmpty(_filter)) return true;
-            var name = (obj != null && obj.GetType() != null && obj.GetType().FullName != null) ? obj.GetType().FullName : "";
-            return name.IndexOf(_filter, System.StringComparison.OrdinalIgnoreCase) >= 0;
+            // Filter hidden; always true
+            return true;
         }
 
         private void DrawPartyUI()

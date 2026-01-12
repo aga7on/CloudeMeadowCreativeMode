@@ -56,23 +56,11 @@ namespace CloudMeadow.CreativeMode
             GUILayout.BeginHorizontal();
             if (GUILayout.Toggle(_activeTab == "Overview", "Overview", GUI.skin.button)) _activeTab = "Overview";
             if (GUILayout.Toggle(_activeTab == "Player", "Player", GUI.skin.button)) _activeTab = "Player";
-            if (GUILayout.Toggle(_activeTab == "Party", "Party", GUI.skin.button)) _activeTab = "Party";
             if (GUILayout.Toggle(_activeTab == "Farm", "Farm", GUI.skin.button)) _activeTab = "Farm";
             if (GUILayout.Toggle(_activeTab == "Inventory", "Inventory", GUI.skin.button)) _activeTab = "Inventory";
             if (GUILayout.Toggle(_activeTab == "Cheats", "Cheats", GUI.skin.button)) _activeTab = "Cheats";
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Rescan (F8)", GUILayout.Width(120))) Rescan();
             if (GUILayout.Button("Unlock Gallery (F7)", GUILayout.Width(170))) GameApi.UnlockAllGallery();
-            GUILayout.EndHorizontal();
-
-            GUILayout.Space(5);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Filter contains:", GUILayout.Width(110));
-            _filter = GUILayout.TextField(_filter ?? string.Empty);
-            GUILayout.Label("Max depth:", GUILayout.Width(80));
-            int tmp;
-            if (int.TryParse(GUILayout.TextField(_maxDepth.ToString(), GUILayout.Width(40)), out tmp)) _maxDepth = tmp;
-            _maxDepth = Mathf.Clamp(_maxDepth, 1, 6);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(5);

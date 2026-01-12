@@ -16,6 +16,9 @@ namespace CloudMeadow.CreativeMode
             {
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Refresh", GUILayout.Width(80))) { }
+                GUILayout.Label("Filter:", GUILayout.Width(50));
+                _addItemFilter = GUILayout.TextField(_addItemFilter ?? "", GUILayout.Width(200));
+                if (GUILayout.Button("Apply", GUILayout.Width(70))) { /* filter is reactive */ }
                 if (GUILayout.Button("Add Item", GUILayout.Width(100))) { _showAddItem = true; if (_allItemDefs == null) _allItemDefs = GameApi.GetAllItemDefinitions(); }
                 if (GUILayout.Button("Get All Items", GUILayout.Width(140))) { GameApi.AddAllItems(1, 1); }
                 GUILayout.EndHorizontal();
@@ -25,9 +28,13 @@ namespace CloudMeadow.CreativeMode
                 for (int i = 0; i < entries.Length; i++)
                 {
                     var e = entries[i]; if (e == null) continue;
-                    GUILayout.BeginHorizontal(GUI.skin.box);
                     var def = ReadDef(e);
                     string name = ReadString(def, new string[] { "Name", "DisplayName", "Code" });
+                    if (!string.IsNullOrEmpty(_addItemFilter))
+                    {
+                        if (name.IndexOf(_addItemFilter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    }
+                    GUILayout.BeginHorizontal(GUI.skin.box);
                     GUILayout.Label((i + 1) + ". " + name, GUILayout.Width(300));
                     int qty = ReadInt(e, new string[] { "Quantity", "Count", "Stack", "Amount" });
                     GUILayout.Label("x" + qty, GUILayout.Width(60));

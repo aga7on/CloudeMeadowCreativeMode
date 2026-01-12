@@ -11,14 +11,39 @@ namespace CloudMeadow.CreativeMode
         private Delegate _startOfNewDayHandler;
         private Delegate _hourChangedHandler;
 
+        private bool _monsterDebugDumped;
+        private int _frames;
+        private string _debugLogPath;
+
         private void OnEnable()
         {
             TryRegisterEvents();
+            try
+            {
+                var dir = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx");
+                dir = System.IO.Path.Combine(dir, "plugins");
+                dir = System.IO.Path.Combine(dir, "CloudMeadowCreativeMode");
+                _debugLogPath = System.IO.Path.Combine(dir, "tmp_rovodev_monsters_dump.log");
+                System.IO.File.WriteAllText(_debugLogPath, "=== Monster Debug Dump ===\n");
+                _monsterDebugDumped = false;
+                _frames = 0;
+            }
+            catch { }
         }
 
         private void OnDisable()
         {
             TryUnregisterEvents();
+        }
+
+        private void Update()
+        {
+            // Wait a few frames after load, then attempt dump once
+            if (_monsterDebugDumped) return;
+            _frames++;
+            if (_frames < 180) return; // ~3s at 60fps
+            TryDumpMonsters();
+            _monsterDebugDumped = true;
         }
 
         private void TryRegisterEvents()
@@ -76,6 +101,60 @@ namespace CloudMeadow.CreativeMode
             {
                 Plugin.Log.LogWarning("GameEventsListener register failed: " + e.Message);
             }
+        }
+
+        private void AppendDebug(string line)
+        {
+            try { System.IO.File.AppendAllText(_debugLogPath, line + "\n"); } catch { }
+        }
+
+        private void TryDumpMonsters()
+        {
+            try
+            {
+                var s = GameManager.Status;
+                var list = s != null ? s.EnumerateActiveMonsters() : null;
+                if (list == null) { AppendDebug("No active monsters."); return; }
+                int idx = 1;
+                foreach (var m in list)
+                {
+                    if (m == null) continue;
+                    AppendDebug("# Monster " + (idx++) + ": " + m.Name + " (" + m.FarmableSpecies + ")");
+                    // dump core fields
+                    ReflectionUtil.DumpObject(m, AppendDebug, 1, 300);
+                    // try visual/appearance-related properties
+                    TryDumpAppearance(m);
+                }
+                AppendDebug("=== End of dump ===");
+            }
+            catch (Exception e)
+            {
+                AppendDebug("Dump error: " + e.Message);
+            }
+        }
+
+        private void TryDumpAppearance(object monster)
+        {
+            try
+            {
+                var t = monster.GetType();
+                string[] keys = { "Pigment", "Pigments", "Palette", "Color", "ColorPattern", "Variant", "Skin", "Appearance", "Visual" };
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var p = t.GetProperty(keys[i], BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (p != null)
+                    {
+                        object v = null; try { v = p.GetValue(monster, null); } catch { }
+                        AppendDebug("  * " + keys[i] + ": " + (v != null ? v.ToString() : "null"));
+                        // If nested appearance object, dump shallow
+                        if (v != null && !(v is string) && !v.GetType().IsPrimitive)
+                        {
+                            ReflectionUtil.DumpObject(v, (l) => AppendDebug("    " + l), 1, 80);
+                        }
+                    }
+                }
+            }
+            catch (Exception e) { AppendDebug("Appearance dump error: " + e.Message); }
         }
 
         private void TryUnregisterEvents()

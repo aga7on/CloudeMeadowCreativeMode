@@ -6,14 +6,18 @@ namespace CloudMeadow.CreativeMode
     {
         private string _timeHH = "07";
         private string _timeMM = "00";
+        private string _timeDay = "1";
         private System.Collections.Generic.Dictionary<object, bool> _monsterTypeWindow = new System.Collections.Generic.Dictionary<object, bool>();
         private System.Collections.Generic.Dictionary<object, bool> _monsterTraitsWindow = new System.Collections.Generic.Dictionary<object, bool>();
         private System.Collections.Generic.Dictionary<object, bool> _monsterAddTraitWindow = new System.Collections.Generic.Dictionary<object, bool>();
         private System.Collections.Generic.Dictionary<object, string> _monsterSelectedSpecies = new System.Collections.Generic.Dictionary<object, string>();
         private System.Collections.Generic.Dictionary<object, string> _traitLevelEdits = new System.Collections.Generic.Dictionary<object, string>();
+        private System.Collections.Generic.Dictionary<object, bool> _monsterPatternWindow = new System.Collections.Generic.Dictionary<object, bool>();
         private System.Collections.Generic.Dictionary<object, string> _addTraitFilter = new System.Collections.Generic.Dictionary<object, string>();
         private System.Collections.Generic.Dictionary<object, Rect> _addTraitPopupRect = new System.Collections.Generic.Dictionary<object, Rect>();
         private System.Collections.Generic.Dictionary<object, Vector2> _addTraitScroll = new System.Collections.Generic.Dictionary<object, Vector2>();
+        private System.Collections.Generic.Dictionary<object, bool> _addTraitDropdownOpen = new System.Collections.Generic.Dictionary<object, bool>();
+        private System.Collections.Generic.Dictionary<object, int> _addTraitSelectedIndex = new System.Collections.Generic.Dictionary<object, int>();
         private object[] _allTraitDefsCache;
 
         private void DrawFarmUI()
@@ -32,16 +36,46 @@ namespace CloudMeadow.CreativeMode
                 if (GUILayout.Button("07:00", GUILayout.Width(60))) GameApi.SetTime(7, 0);
                 if (GUILayout.Button("14:00", GUILayout.Width(60))) GameApi.SetTime(14, 0);
                 if (GUILayout.Button("20:00", GUILayout.Width(60))) GameApi.SetTime(20, 0);
-                GUILayout.Label("Set:", GUILayout.Width(30));
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label("Set exact day & time (time may be unstable; to reset the date pick the current season)");
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label("Day:", GUILayout.Width(30));
+                _timeDay = GUILayout.TextField(_timeDay, GUILayout.Width(40));
+                GUILayout.Label("Time:", GUILayout.Width(40));
                 _timeHH = GUILayout.TextField(_timeHH, GUILayout.Width(30));
                 GUILayout.Label(":", GUILayout.Width(8));
                 _timeMM = GUILayout.TextField(_timeMM, GUILayout.Width(30));
                 if (GUILayout.Button("Apply", GUILayout.Width(60)))
                 {
-                    int hh = 7, mm = 0; int.TryParse(_timeHH, out hh); int.TryParse(_timeMM, out mm);
-                    GameApi.SetTime(hh, mm);
+                    int day = 1, hh = 7, mm = 0; int.TryParse(_timeDay, out day); int.TryParse(_timeHH, out hh); int.TryParse(_timeMM, out mm);
+                    GameApi.SetDayAndTime(day, hh, mm);
                 }
                 GUILayout.EndHorizontal();
+
+                GUILayout.Space(5);
+                GUILayout.Label("Season & Weather");
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                if (GUILayout.Button("Spring")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Spring);
+                if (GUILayout.Button("Summer")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Summer);
+                if (GUILayout.Button("Autumn")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Autumn);
+                if (GUILayout.Button("Winter")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Winter);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                if (GUILayout.Button("Clear")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Clear);
+                if (GUILayout.Button("Rain")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Rain);
+                if (GUILayout.Button("Storm")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Storm);
+                if (GUILayout.Button("Snow")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Snow);
+                if (GUILayout.Button("Blazing Heat")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.BlazingHeat);
+                if (GUILayout.Button("Falling Leaves")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Leafs);
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(5);
+                GUILayout.Label("Current eggs");
+                DrawEggsUI();
+
+                GUILayout.Space(5);
+                // Debug tools hidden per request
 
                 GUILayout.Space(5);
                 GUILayout.Label("Monsters");
@@ -56,19 +90,24 @@ namespace CloudMeadow.CreativeMode
                     GUILayout.Label("Type: " + species, GUILayout.Width(160));
                     if (GUILayout.Button("Change", GUILayout.Width(70))) { _monsterTypeWindow[m] = true; _monsterSelectedSpecies[m] = species; }
                     GUILayout.Label("Gender:", GUILayout.Width(60));
-                    if (GUILayout.Button("Male", GUILayout.Width(60))) GameApi.SetMonsterGender(m, "Male");
-                    if (GUILayout.Button("Female", GUILayout.Width(60))) GameApi.SetMonsterGender(m, "Female");
                     if (GUILayout.Button("Swap", GUILayout.Width(60))) GameApi.SwapMonsterGender(m);
                     if (GUILayout.Button("Delete", GUILayout.Width(70))) { GameApi.RemoveMonster(m); GUILayout.EndHorizontal(); GUILayout.EndVertical(); continue; }
-                    if (GUILayout.Button("Traits", GUILayout.Width(70))) { _monsterTraitsWindow[m] = true; }
+                    if (GUILayout.Button("Traits", GUILayout.Width(70))) { _monsterTraitsWindow[m] = _monsterTraitsWindow.ContainsKey(m) && _monsterTraitsWindow[m] ? false : true; }
+                    // Pigment UI
+                    string curPigment = GameApi.GetMonsterPigment(m);
+                    GUILayout.Label("Pigment: " + curPigment, GUILayout.Width(180));
+                    if (GUILayout.Button("Change", GUILayout.Width(70))) { _monsterPatternWindow[m] = true; }
                     GUILayout.EndHorizontal();
 
-                    GUILayout.BeginVertical(GUI.skin.box);
-                    StatRow("Physique", m, "Physique");
-                    StatRow("Stamina", m, "Stamina");
-                    StatRow("Intuition", m, "Intuition");
-                    StatRow("Swiftness", m, "Swiftness");
-                    GUILayout.EndVertical();
+                    if (_monsterPatternWindow.ContainsKey(m) && _monsterPatternWindow[m]) DrawMonsterPatternWindow(m);
+
+                    // Monster primary stats temporarily hidden per request
+                    // GUILayout.BeginVertical(GUI.skin.box);
+                    // StatRow("Physique", m, "Physique");
+                    // StatRow("Stamina", m, "Stamina");
+                    // StatRow("Intuition", m, "Intuition");
+                    // StatRow("Swiftness", m, "Swiftness");
+                    // GUILayout.EndVertical();
 
                     if (_monsterTypeWindow.ContainsKey(m) && _monsterTypeWindow[m]) DrawMonsterTypeWindow(m);
                     if (_monsterTraitsWindow.ContainsKey(m) && _monsterTraitsWindow[m]) DrawMonsterTraitsWindow(m);
@@ -80,6 +119,63 @@ namespace CloudMeadow.CreativeMode
             {
                 GUILayout.Label("Farm UI error: " + e.Message);
             }
+        }
+
+        private void DrawEggsUI()
+        {
+            try
+            {
+                var eggs = GameApi.GetIncubatorEggs();
+                if (eggs == null || eggs.Length == 0)
+                {
+                    GUILayout.Label("No eggs found in incubators.");
+                    return;
+                }
+                // Hatch All hidden per request
+                for (int i = 0; i < eggs.Length; i++)
+                {
+                    var e = eggs[i]; if (e == null) continue;
+                    string name = GameApi.GetEggDisplayName(e);
+                    string timer = GameApi.GetEggTimerString(e);
+                    GUILayout.BeginHorizontal(GUI.skin.box);
+                    GUILayout.Label((i + 1) + ". " + name + "  [" + timer + "]", GUILayout.Width(500));
+                    // Individual Hatch hidden per request
+                    GUILayout.EndHorizontal();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                GUILayout.Label("Eggs UI error: " + ex.Message);
+            }
+        }
+
+        private void DrawMonsterPatternWindow(object monster)
+        {
+            // Rename to Pigment selection
+            GUILayout.BeginVertical(GUI.skin.window);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Change Pigment");
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Close", GUILayout.Width(60))) { _monsterPatternWindow[monster] = false; GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }
+            GUILayout.EndHorizontal();
+
+            var pigments = GameApi.GetAvailablePigments();
+            if (pigments != null && pigments.Length > 0)
+            {
+                for (int i = 0; i < pigments.Length; i++)
+                {
+                    string name = pigments[i];
+                    GUILayout.BeginHorizontal(GUI.skin.box);
+                    GUILayout.Label(name, GUILayout.Width(220));
+                    if (GUILayout.Button("Select", GUILayout.Width(60))) { GameApi.SetMonsterPigment(monster, name); _monsterPatternWindow[monster] = false; }
+                    GUILayout.EndHorizontal();
+                }
+            }
+            else
+            {
+                GUILayout.Label("No pigments found.");
+            }
+            GUILayout.EndVertical();
         }
 
         private void DrawMonsterTypeWindow(object monster)
@@ -115,22 +211,54 @@ namespace CloudMeadow.CreativeMode
             GUILayout.EndHorizontal();
 
             var traits = GameApi.GetMonsterTraits(monster);
+            // Partition traits by source
+            var blood = new System.Collections.Generic.List<object>();
+            var uni = new System.Collections.Generic.List<object>();
             for (int i = 0; i < traits.Length; i++)
             {
-                var tr = traits[i];
+                var tr = traits[i]; if (tr == null) continue;
+                var src = GameApi.GetTraitSourceForUI(tr);
+                if (!string.IsNullOrEmpty(src) && src.ToLower().IndexOf("universal") >= 0) uni.Add(tr); else blood.Add(tr);
+            }
+
+            GUILayout.Label("Bloodlines", GUI.skin.label);
+            for (int i = 0; i < blood.Count; i++)
+            {
+                var tr = blood[i];
                 string name = ReadString(tr, new string[] { "Name", "TraitName", "TraitCode", "Code" });
                 int lvl = ReadInt(tr, new string[] { "Grade", "Level", "CurrentLevel" });
                 int max = GameApi.GetTraitMaxGrade(tr);
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label((i + 1) + ". " + name + " Lvl:" + lvl + (max > 0 ? "/" + max : ""), GUILayout.Width(280));
+                GUILayout.Label((i + 1) + ". " + name + " Lvl:" + lvl + (max > 0 ? "/" + max : ""), GUILayout.Width(320));
                 if (GUILayout.Button("Del", GUILayout.Width(40))) { GameApi.RemoveTraitFromMonster(monster, tr); GUILayout.EndHorizontal(); continue; }
                 if (GUILayout.Button("Max", GUILayout.Width(50))) GameApi.MaxTraitGrade(tr);
-                GUILayout.Label("(Experimental: Set lvl)", GUILayout.Width(150));
+                GUILayout.Label("Set lvl", GUILayout.Width(50));
                 string edit;
                 if (!_traitLevelEdits.TryGetValue(tr, out edit)) edit = lvl.ToString();
                 edit = GUILayout.TextField(edit, GUILayout.Width(40));
                 _traitLevelEdits[tr] = edit;
                 if (GUILayout.Button("Set", GUILayout.Width(40))) { int nv; if (int.TryParse(edit, out nv)) GameApi.SetTraitGrade(tr, nv); }
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Universal", GUI.skin.label);
+            for (int i = 0; i < uni.Count; i++)
+            {
+                var tr = uni[i];
+                string name = ReadString(tr, new string[] { "Name", "TraitName", "TraitCode", "Code" });
+                int lvl = ReadInt(tr, new string[] { "Grade", "Level", "CurrentLevel" });
+                int max = GameApi.GetTraitMaxGrade(tr);
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label((i + 1) + ". " + name + " Lvl:" + lvl + (max > 0 ? "/" + max : ""), GUILayout.Width(320));
+                if (GUILayout.Button("Del", GUILayout.Width(40))) { GameApi.RemoveTraitFromMonster(monster, tr); GUILayout.EndHorizontal(); continue; }
+                if (GUILayout.Button("Max", GUILayout.Width(50))) GameApi.MaxTraitGrade(tr);
+                GUILayout.Label("Set lvl", GUILayout.Width(50));
+                string edit2;
+                if (!_traitLevelEdits.TryGetValue(tr, out edit2)) edit2 = lvl.ToString();
+                edit2 = GUILayout.TextField(edit2, GUILayout.Width(40));
+                _traitLevelEdits[tr] = edit2;
+                if (GUILayout.Button("Set", GUILayout.Width(40))) { int nv; if (int.TryParse(edit2, out nv)) GameApi.SetTraitGrade(tr, nv); }
                 GUILayout.EndHorizontal();
             }
 
@@ -147,7 +275,8 @@ namespace CloudMeadow.CreativeMode
             if (GUILayout.Button("Close", GUILayout.Width(60))) { _monsterAddTraitWindow[monster] = false; GUIUtility.ExitGUI(); return; }
             GUILayout.EndHorizontal();
 
-            if (_allTraitDefsCache == null) _allTraitDefsCache = GameApi.GetAllTraitDefinitions();
+            // Build per-monster trait list: Bloodline for the monster's species + Universal
+            var defs = GameApi.GetTraitDefinitionsForMonster(monster);
             _traitLevelEdits[monster] = _traitLevelEdits.ContainsKey(monster) ? _traitLevelEdits[monster] : "1";
             if (!_addTraitScroll.ContainsKey(monster)) _addTraitScroll[monster] = Vector2.zero;
             if (!_addTraitFilter.ContainsKey(monster)) _addTraitFilter[monster] = "";
@@ -166,34 +295,87 @@ namespace CloudMeadow.CreativeMode
             GUILayout.EndHorizontal();
 
             _addTraitScroll[monster] = GUILayout.BeginScrollView(_addTraitScroll[monster], GUILayout.Height(480));
-            if (_allTraitDefsCache != null && _allTraitDefsCache.Length > 0)
+
+            string speciesName = GameApi.GetMonsterSpecies(monster);
+            var bloodlineDefs = GameApi.GetBloodlineTraitDefinitionsForSpecies(speciesName);
+            var universalDefs = GameApi.GetUniversalTraitDefinitions();
+
+            int addedCount = 0;
+
+            // Section: Bloodlines
+            GUILayout.Label("Bloodlines", GUI.skin.label);
+            if (bloodlineDefs != null && bloodlineDefs.Length > 0)
             {
-                for (int i = 0; i < _allTraitDefsCache.Length; i++)
+                for (int i = 0; i < bloodlineDefs.Length; i++)
                 {
-                    var d = _allTraitDefsCache[i]; if (d == null) continue;
+                    var d = bloodlineDefs[i]; if (d == null) continue;
                     var name = ReadString(d, new string[] { "Name", "DisplayName", "Code" });
-                    if (!string.IsNullOrEmpty(filter))
-                    {
-                        if (name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    }
+                    if (!string.IsNullOrEmpty(filter) && name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    bool owned = GameApi.MonsterHasTrait(monster, d);
                     GUILayout.BeginHorizontal(GUI.skin.box);
-                    GUILayout.Label(name, GUILayout.Width(740));
+                    GUILayout.Label(name + (owned ? " (owned)" : ""), GUILayout.Width(740));
+                    GUI.enabled = !owned;
                     if (GUILayout.Button("Add", GUILayout.Width(80)))
                     {
                         int g = 1; int.TryParse(_traitLevelEdits[monster], out g); if (g < 1) g = 1; if (g > 5) g = 5;
-                        GameApi.AddTraitToMonster(monster, d, g);
+                        GameApi.TryAddTraitToMonster(monster, d, g);
+                        _monsterAddTraitWindow[monster] = false;
                     }
+                    GUI.enabled = true;
                     GUILayout.EndHorizontal();
                 }
             }
             else
             {
-                GUILayout.Label("No trait definitions found.");
+                GUILayout.Label("No bloodline traits available.");
             }
+
+            GUILayout.Space(8);
+
+            // Section: Universal
+            GUILayout.Label("Universal", GUI.skin.label);
+            if (universalDefs != null && universalDefs.Length > 0)
+            {
+                for (int i = 0; i < universalDefs.Length; i++)
+                {
+                    var d = universalDefs[i]; if (d == null) continue;
+                    var name = ReadString(d, new string[] { "Name", "DisplayName", "Code" });
+                    if (!string.IsNullOrEmpty(filter) && name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    bool owned = GameApi.MonsterHasTrait(monster, d);
+                    GUILayout.BeginHorizontal(GUI.skin.box);
+                    GUILayout.Label(name + (owned ? " (owned)" : ""), GUILayout.Width(740));
+                    GUI.enabled = !owned;
+                    if (GUILayout.Button("Add", GUILayout.Width(80)))
+                    {
+                        int g = 1; int.TryParse(_traitLevelEdits[monster], out g); if (g < 1) g = 1; if (g > 5) g = 5;
+                        GameApi.TryAddTraitToMonster(monster, d, g);
+                        _monsterAddTraitWindow[monster] = false;
+                    }
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+                }
+            }
+            else
+            {
+                GUILayout.Label("No universal traits found.");
+            }
+
             GUILayout.EndScrollView();
 
             GUILayout.Space(5);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Export Report", GUILayout.Width(140)))
+            {
+                string dir = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx");
+                dir = System.IO.Path.Combine(dir, "plugins");
+                dir = System.IO.Path.Combine(dir, "CloudMeadowCreativeMode");
+                string path = System.IO.Path.Combine(dir, "traits_report.txt");
+                GameApi.GenerateFarmTraitsReport(path);
+            }
             if (GUILayout.Button("Close", GUILayout.Width(100))) { _monsterAddTraitWindow[monster] = false; }
+            GUILayout.EndHorizontal();
             GUILayout.EndVertical();
         }
 
