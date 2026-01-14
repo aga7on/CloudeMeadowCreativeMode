@@ -58,6 +58,7 @@ namespace CloudMeadow.CreativeMode
             if (GUILayout.Toggle(_activeTab == "Player", "Player", GUI.skin.button)) _activeTab = "Player";
             if (GUILayout.Toggle(_activeTab == "Farm", "Farm", GUI.skin.button)) _activeTab = "Farm";
             if (GUILayout.Toggle(_activeTab == "Inventory", "Inventory", GUI.skin.button)) _activeTab = "Inventory";
+            if (GUILayout.Toggle(_activeTab == "Quests", "Quests", GUI.skin.button)) _activeTab = "Quests";
             if (GUILayout.Toggle(_activeTab == "Cheats", "Cheats", GUI.skin.button)) _activeTab = "Cheats";
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Unlock Gallery (F7)", GUILayout.Width(170))) GameApi.UnlockAllGallery();
@@ -70,6 +71,7 @@ namespace CloudMeadow.CreativeMode
             else if (_activeTab == "Party") DrawPartyUI();
             else if (_activeTab == "Farm") DrawFarmUI();
             else if (_activeTab == "Inventory") DrawInventoryUI();
+            else if (_activeTab == "Quests") DrawQuestsUI();
             else if (_activeTab == "Cheats") DrawCheats();
             GUILayout.EndScrollView();
 
@@ -133,8 +135,23 @@ namespace CloudMeadow.CreativeMode
             if (GUILayout.Button("Set", GUILayout.Width(50)))
             {
                 int iv; float fv;
-                if (int.TryParse(edit, out iv)) TrySetStat(statsObj, statKey, iv);
-                else if (float.TryParse(edit, out fv)) TrySetStat(statsObj, statKey, fv);
+                // Safe pathway for primary stats to respect game caps
+                if (string.Equals(statKey, "Physique", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Stamina", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Intuition", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Swiftness", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(edit, out iv))
+                    {
+                        try { SetPrimaryStatSafe(statsObj, statKey, iv); }
+                        catch { TrySetStat(statsObj, statKey, iv); }
+                    }
+                }
+                else
+                {
+                    if (int.TryParse(edit, out iv)) TrySetStat(statsObj, statKey, iv);
+                    else if (float.TryParse(edit, out fv)) TrySetStat(statsObj, statKey, fv);
+                }
             }
             GUILayout.EndHorizontal();
         }
@@ -218,6 +235,27 @@ namespace CloudMeadow.CreativeMode
                 if (prop != null && prop.CanWrite) { prop.SetValue(target, value, null); return; }
                 var field = t.GetField(statKey, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
                 if (field != null) { field.SetValue(target, value); return; }
+                // Prefer IncreasePrimaryStatCustomValue for safe edits on primary stats
+                if (IsPrimaryStatKey(statKey))
+                {
+                    var method = t.GetMethod("IncreasePrimaryStatCustomValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (method != null)
+                    {
+                        int targetVal = Convert.ToInt32(value);
+                        int current = Convert.ToInt32(ReadStat(target, new string[] { statKey }));
+                        int delta = targetVal - current;
+                        if (delta != 0)
+                        {
+                            var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                            if (primEnum != null)
+                            {
+                                if (delta < 0) delta = 0; // don't decrease via this path
+                                method.Invoke(target, new object[] { primEnum, delta });
+                                return;
+                            }
+                        }
+                    }
+                }
                 var m2 = t.GetMethod("SetStatValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (m2 != null && m2.GetParameters().Length == 2)
                 {
@@ -232,6 +270,49 @@ namespace CloudMeadow.CreativeMode
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning("TrySetStat failed: " + e.Message); }
+        }
+
+        private bool IsPrimaryStatKey(string statKey)
+        {
+            return string.Equals(statKey, "Physique", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Stamina", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Intuition", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Swiftness", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void SetPrimaryStatSafe(object statsObj, string statKey, int targetValue)
+        {
+            try
+            {
+                var t = statsObj.GetType();
+                var getData = t.GetMethod("GetPrimaryStatData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var incr = t.GetMethod("IncreasePrimaryStatCustomValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (getData == null || incr == null) { TrySetStat(statsObj, statKey, targetValue); return; }
+                var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                if (primEnum == null) { TrySetStat(statsObj, statKey, targetValue); return; }
+                // Query current and max
+                var psd = getData.Invoke(statsObj, new object[] { primEnum });
+                if (psd != null)
+                {
+                    var psdType = psd.GetType();
+                    var baseValue = Convert.ToInt32(psdType.GetProperty("BaseValue").GetValue(psd, null));
+                    var maxCustom = Convert.ToInt32(psdType.GetProperty("MaxCustomValue").GetValue(psd, null));
+                    var growth = Convert.ToSingle(psdType.GetProperty("GrowthValue").GetValue(psd, null));
+                    // Clamp target to achievable BaseValue = Growth + Custom (Custom <= MaxCustomValue)
+                    int maxBase = Mathf.RoundToInt(growth + (float)maxCustom);
+                    if (targetValue > maxBase) targetValue = maxBase;
+                    int currentBase = Convert.ToInt32(ReadStat(statsObj, new string[] { statKey }));
+                    int delta = targetValue - currentBase;
+                    if (delta > 0)
+                    {
+                        incr.Invoke(statsObj, new object[] { primEnum, delta });
+                    }
+                }
+            }
+            catch
+            {
+                TrySetStat(statsObj, statKey, targetValue);
+            }
         }
 
         private void TrySetMember(object target, string memberName, object value)

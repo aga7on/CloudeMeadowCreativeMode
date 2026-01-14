@@ -23,7 +23,7 @@ namespace CloudMeadow.CreativeMode
                 _editName = GUILayout.TextField(_editName, GUILayout.Width(180));
                 if (GUILayout.Button("Set", GUILayout.Width(50))) TrySetMember(p, "Name", _editName);
                 GUILayout.EndHorizontal();
-                // Level
+                // Level (clamped to GameManager.MaxLevel)
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Level:", GUILayout.Width(60));
                 if (_editLevel == null) _editLevel = p.Level.ToString();
@@ -31,7 +31,16 @@ namespace CloudMeadow.CreativeMode
                 if (GUILayout.Button("Set", GUILayout.Width(50)))
                 {
                     int lvl;
-                    if (int.TryParse(_editLevel, out lvl)) TrySetMember(p, "Level", lvl);
+                    if (int.TryParse(_editLevel, out lvl))
+                    {
+                        try
+                        {
+                            int maxLvl = TeamNimbus.CloudMeadow.Managers.GameManager.MaxLevel;
+                            if (lvl < 1) lvl = 1; if (lvl > maxLvl) lvl = maxLvl;
+                            TrySetMember(p, "Level", lvl);
+                        }
+                        catch { TrySetMember(p, "Level", lvl); }
+                    }
                 }
                 GUILayout.Label(p.IsMaxLevel ? "(Max)" : "", GUILayout.Width(60));
                 GUILayout.EndHorizontal();
@@ -56,6 +65,7 @@ namespace CloudMeadow.CreativeMode
 
                 GUILayout.Space(5);
                 GUILayout.Label("Primary Stats");
+                GUILayout.Label("Note: Primary stats are limited by Growth + Max Custom (non-monster cap is 500 custom). Values set here respect those caps.", GUI.skin.box);
                 GUILayout.BeginVertical(GUI.skin.box);
                 StatRow("Physique", p, "Physique");
                 StatRow("Stamina", p, "Stamina");

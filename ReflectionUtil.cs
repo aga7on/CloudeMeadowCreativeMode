@@ -194,5 +194,13 @@ namespace CloudMeadow.CreativeMode
             }
             return uniq;
         }
+
+        // Added helper used by GameApi: get a method regardless of visibility
+        public static MethodInfo GetPrivateMethod(object instance, string name)
+        {
+            if (instance == null || string.IsNullOrEmpty(name)) return null;
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            try { return instance.GetType().GetMethod(name, flags); } catch { return null; }
+        }
     }
 }

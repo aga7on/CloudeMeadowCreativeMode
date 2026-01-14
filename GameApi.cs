@@ -13,6 +13,140 @@ namespace CloudMeadow.CreativeMode
 {
     internal static class GameApi
     {
+        // Movement tweaks
+        private static float _speedMultiplier = 1f;
+        public static float SpeedMultiplier { get { return _speedMultiplier; } }
+        public static void SetSpeedMultiplier(float mult)
+        {
+            if (mult < 0.1f) mult = 0.1f; if (mult > 50f) mult = 50f;
+            _speedMultiplier = mult;
+            Banner("Speed x" + mult.ToString("0.##"));
+        }
+        private static bool _noClip;
+        public static bool NoClipEnabled { get { return _noClip; } }
+        public static void ToggleNoClip()
+        {
+            try
+            {
+                _noClip = !_noClip;
+                var pc = UnityEngine.Object.FindObjectOfType<TeamNimbus.CloudMeadow.Controllers.PlayerController>();
+                if (pc != null)
+                {
+                    var colProp = pc.GetType().GetProperty("MovementCollider");
+                    var col = colProp != null ? (UnityEngine.CircleCollider2D)colProp.GetValue(pc, null) : null;
+                    if (col != null) col.gameObject.SetActive(!_noClip);
+                }
+                Banner("No Clip: " + (_noClip ? "ON" : "OFF"));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("ToggleNoClip failed: " + e.Message); }
+        }
+        public static void SetMonsterLoyalty(object monster, int loyalty)
+        {
+            try
+            {
+                var t = monster.GetType();
+                var f = t.GetField("loyalty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (f != null)
+                {
+                    if (loyalty < -30) loyalty = -30; if (loyalty > 110) loyalty = 110;
+                    f.SetValue(monster, loyalty);
+                    var fIsLoyal = t.GetField("isLoyal", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (fIsLoyal != null) fIsLoyal.SetValue(monster, loyalty >= 100);
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterLoyalty failed: " + e.Message); }
+        }
+
+        public static void SetMonsterDry(object monster, bool isDry)
+        {
+            try
+            {
+                var baseType = monster.GetType().BaseType; // PartyCharacterStats
+                var f = baseType.GetField("tempPassiveBuffs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // Fallback: try SetBaseStat Dry stat
+                var statEnum = Type.GetType("TeamNimbus.CloudMeadow.StatModifiers, Game");
+                var dryVal = statEnum != null ? Enum.Parse(statEnum, "Dry") : null;
+                var setBase = baseType.GetMethod("SetBaseStat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (setBase != null && dryVal != null)
+                {
+                    setBase.Invoke(monster, new object[] { dryVal, isDry ? 1f : 0f });
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterDry failed: " + e.Message); }
+        }
+
+        public static void SetMonsterInfertile(object monster, bool infertile)
+        {
+            try
+            {
+                var baseType = monster.GetType().BaseType;
+                var statEnum = Type.GetType("TeamNimbus.CloudMeadow.StatModifiers, Game");
+                var infVal = statEnum != null ? Enum.Parse(statEnum, "Infertile") : null;
+                var setBase = baseType.GetMethod("SetBaseStat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (setBase != null && infVal != null)
+                {
+                    setBase.Invoke(monster, new object[] { infVal, infertile ? 1f : 0f });
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterInfertile failed: " + e.Message); }
+        }
+
+        public static void SetMonsterIsLoyal(object monster, bool isLoyal)
+        {
+            try
+            {
+                var t = monster.GetType();
+                var f = t.GetField("isLoyal", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (f != null) f.SetValue(monster, isLoyal);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterIsLoyal failed: " + e.Message); }
+        }
+
+        public static void SetYear(int year)
+        {
+            try
+            {
+                if (year < 1) year = 1;
+                var cal = GameManager.Status.GetCalendarDate;
+                var cur = cal.DateTime;
+                if (year <= cur.Year)
+                {
+                    // Only support moving forward in time to avoid engine edge cases
+                    Banner("Year change supports forward only");
+                    return;
+                }
+                int delta = year - cur.Year;
+                var future = cur.CreateFutureDate(GameTime.CreateNewDuration(numYears: delta));
+                int minutes = GameTime.CreateDurationBetweenDates(cur, future).AsMinutes;
+                cal.TickMinutes(minutes);
+                LogBuffer.Add("Year -> " + future.Year);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetYear failed: " + e.Message); }
+        }
+
+        public static void WinCombat()
+        {
+            try
+            {
+                var csm = UnityEngine.Object.FindObjectOfType<TeamNimbus.CloudMeadow.Combat.CombatSceneManager>();
+                if (csm != null)
+                {
+                    // Brutal method: kill all enemies
+                    var dbg = typeof(TeamNimbus.CloudMeadow.Combat.DebugCheats);
+                    var kill = dbg.GetMethod("Kill");
+                    var targetMode = dbg.GetNestedType("TargetMode");
+                    if (kill != null && targetMode != null)
+                    {
+                        var enemies = Enum.Parse(targetMode, "Enemies");
+                        kill.Invoke(null, new object[] { enemies });
+                        Banner("Combat: Victory forced");
+                        return;
+                    }
+                }
+                Banner("Combat: Not in combat or API missing");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("WinCombat failed: " + e.Message); }
+        }
         public static bool Ready { get { return Application.isPlaying && GameManager.Instance != null && GameManager.IsGameStatusLoaded; } }
 
         public static void UnlockAllGallery()
@@ -812,33 +946,66 @@ namespace CloudMeadow.CreativeMode
             return cur;
         }
 
+        private static bool _pendingFarmLayoutRefresh;
+        public static bool PendingFarmLayoutRefresh { get { return _pendingFarmLayoutRefresh; } }
+        public static void MarkPendingFarmLayoutRefresh() { _pendingFarmLayoutRefresh = true; }
+        public static void ClearPendingFarmLayoutRefresh() { _pendingFarmLayoutRefresh = false; }
+        public static void TryRefreshFarmLayout(TeamNimbus.CloudMeadow.Farm.FarmSceneManager fsm)
+        {
+            try
+            {
+                var gs = GameManager.Status;
+                var fsmType = typeof(TeamNimbus.CloudMeadow.Farm.FarmSceneManager);
+                var segField = fsmType.GetField("_segments", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var segs = segField != null ? segField.GetValue(fsm) as Array : null;
+                var initMethod = fsmType.GetMethod("InitUpgradeLevelLayout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (segs != null && initMethod != null)
+                {
+                    int farmLevel = gs.FarmLevel; // Flags.FarmUpgrade + 1
+                    for (int i = 0; i < segs.Length; i++)
+                    {
+                        bool isActivated = (i < farmLevel);
+                        initMethod.Invoke(fsm, new object[] { i, isActivated });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Farm layout refresh failed: " + e.Message);
+            }
+        }
+
         public static void UpgradeFarm()
         {
             try
             {
-                var s = GameManager.Status;
-                // Try obvious methods
-                string[] mnames = { "CHEAT_UnlockAllUpgrades", "UnlockAllUpgrades", "UnlockAllFarmUpgrades", "UnlockEverything" };
-                for (int i = 0; i < mnames.Length; i++)
+                var gs = GameManager.Status;
+                // Max out farm level
+                var flags = gs.Flags;
+                try { var f = flags.GetType().GetField("FarmUpgrade"); if (f != null) f.SetValue(flags, GameStatus.MaxFarmLevel); } catch { flags.FarmUpgrade = GameStatus.MaxFarmLevel; }
+                // Unlock all buildings
+                foreach (FarmBuildingTypes bt in Enum.GetValues(typeof(FarmBuildingTypes)))
                 {
-                    var m = s.GetType().GetMethod(mnames[i], System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (m != null && m.GetParameters().Length == 0) { try { m.Invoke(s, null); Banner("Farm upgrades unlocked"); return; } catch { } }
+                    try { gs.SetFarmBuildingUnlocked(bt, false); } catch { }
                 }
-                // Try FarmStatus / Managers
-                var fs = s.FarmStatus;
-                if (fs != null)
+                // Refresh farm scene segments if present
+                var fsm = UnityEngine.Object.FindObjectOfType<TeamNimbus.CloudMeadow.Farm.FarmSceneManager>();
+                // Only attempt in Farm scene; if not present, mark pending to refresh on scene init
+                if (fsm != null)
                 {
-                    var m2 = fs.GetType().GetMethod("CHEAT_UnlockAll", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                           ?? fs.GetType().GetMethod("UnlockAll");
-                    if (m2 != null && m2.GetParameters().Length == 0) { try { m2.Invoke(fs, null); Banner("Farm upgrades unlocked"); return; } catch { } }
-                    // Expand island / regions
-                    var exp = fs.GetType().GetMethod("CHEAT_ExpandIsland", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                           ?? fs.GetType().GetMethod("ExpandIsland");
-                    if (exp != null && exp.GetParameters().Length == 0) { try { exp.Invoke(fs, null); } catch { } }
+                    TryRefreshFarmLayout(fsm);
                 }
-                Banner("Farm upgrade: attempted unlock");
+                else
+                {
+                    MarkPendingFarmLayoutRefresh();
+                }
+                Banner("Farm: All upgrades unlocked");
             }
-            catch (Exception e) { Plugin.Log.LogWarning("UpgradeFarm failed: " + e.Message); }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("UpgradeFarm failed: " + e.Message);
+            }
+            return;
         }
 
         public static void WaterAllCrops()
@@ -1495,6 +1662,81 @@ namespace CloudMeadow.CreativeMode
             catch { }
             return new object[0];
         }
+
+        public static object[] GetAllBloodlineTraitDefinitionsForAllSpecies()
+        {
+            try
+            {
+                var lib = TeamNimbus.CloudMeadow.Managers.GameManager.MonsterTraitLibrary;
+                var list = new System.Collections.Generic.List<object>(256);
+                // iterate all species from enum FarmableSpecies
+                var speciesValues = System.Enum.GetValues(typeof(TeamNimbus.CloudMeadow.Monsters.FarmableSpecies));
+                for (int i = 0; i < speciesValues.Length; i++)
+                {
+                    var s = (TeamNimbus.CloudMeadow.Monsters.FarmableSpecies)speciesValues.GetValue(i);
+                    try
+                    {
+                        var traitsByType = ReflectionUtil.GetPrivateMethod(lib, "ResolveMonsterTraitsByType").Invoke(lib, new object[] { s });
+                        if (traitsByType != null)
+                        {
+                            var tType = traitsByType.GetType();
+                            // Bloodline parts: StatLimitTraits + OtherBloodlineTraits
+                            var statLimit = tType.GetField("StatLimitTraits").GetValue(traitsByType) as System.Array;
+                            var otherBlood = tType.GetField("OtherBloodlineTraits").GetValue(traitsByType) as System.Array;
+                            AppendTraitArray(list, statLimit);
+                            AppendTraitArray(list, otherBlood);
+                        }
+                    }
+                    catch { }
+                }
+                // de-dup by reference
+                var uniq = new System.Collections.Generic.List<object>(list.Count);
+                var seen = new System.Collections.Generic.HashSet<object>();
+                for (int i = 0; i < list.Count; i++) { var o = list[i]; if (o != null && !seen.Contains(o)) { seen.Add(o); uniq.Add(o); } }
+                return uniq.ToArray();
+            }
+            catch (System.Exception e) { Plugin.Log.LogWarning("GetAllBloodlineTraitDefinitionsForAllSpecies failed: " + e.Message); }
+            return new object[0];
+        }
+
+        private static void AppendTraitArray(System.Collections.Generic.List<object> list, System.Array arr)
+        {
+            if (arr == null) return;
+            for (int i = 0; i < arr.Length; i++) { var v = arr.GetValue(i); if (v != null) list.Add(v); }
+        }
+
+        public static System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<object>> GroupBloodlineTraitsBySpecies(object[] allBloodline)
+        {
+            var map = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<object>>(16, System.StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var lib = TeamNimbus.CloudMeadow.Managers.GameManager.MonsterTraitLibrary;
+                var speciesValues = System.Enum.GetValues(typeof(TeamNimbus.CloudMeadow.Monsters.FarmableSpecies));
+                for (int i = 0; i < speciesValues.Length; i++)
+                {
+                    var s = (TeamNimbus.CloudMeadow.Monsters.FarmableSpecies)speciesValues.GetValue(i);
+                    string speciesName = s.ToString();
+                    var list = new System.Collections.Generic.List<object>();
+                    try
+                    {
+                        var traitsByType = ReflectionUtil.GetPrivateMethod(lib, "ResolveMonsterTraitsByType").Invoke(lib, new object[] { s });
+                        if (traitsByType != null)
+                        {
+                            var tType = traitsByType.GetType();
+                            var statLimit = tType.GetField("StatLimitTraits").GetValue(traitsByType) as System.Array;
+                            var otherBlood = tType.GetField("OtherBloodlineTraits").GetValue(traitsByType) as System.Array;
+                            AppendTraitArray(list, statLimit); AppendTraitArray(list, otherBlood);
+                        }
+                    }
+                    catch { }
+                    map[speciesName] = list;
+                }
+                return map;
+            }
+            catch { }
+            return map;
+        }
+        
 
         public static object[] GetUniversalTraitDefinitions()
         {

@@ -57,6 +57,10 @@
       <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\..\..\Cloud Meadow_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Game">
       <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\Game.dll</HintPath>
       <Private>false</Private>
@@ -88,9 +92,13 @@
     <Compile Include="UIOverlay.Inventory.cs" />
     <Compile Include="UIOverlay.Cheats.cs" />
     <Compile Include="UIOverlay.OverviewParty.cs" />
+    <Compile Include="UIOverlay.Quests.cs" />
     <Compile Include="GameApi.cs" />
+    <Compile Include="GameApi.Quest.cs" />
+    <Compile Include="FarmPatches.cs" />
     <Compile Include="LogSink.cs" />
     <Compile Include="GameEventsListener.cs" />
+    <Compile Include="MovementPatches.cs" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />
