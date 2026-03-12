@@ -54,12 +54,12 @@ namespace CloudMeadow.CreativeMode
                 // LVL/HP/XP
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("LVL " + p.Level, GUILayout.Width(70));
-                var hpCur = ReadStat(p, new string[] { "HPCurrent", "CurrentHP", "HP" });
-                var hpMax = ReadStat(p, new string[] { "HPMax", "MaxHP", "MaxHealth" });
-                GUILayout.Label("HP: " + (hpCur != null ? hpCur.ToString() : "-") + "/" + (hpMax != null ? hpMax.ToString() : "-"), GUILayout.Width(180));
-                var xp = ReadStat(p, new string[] { "CurrentXP", "XP", "Experience" });
-                GUILayout.Label("XP: " + (xp != null ? xp.ToString() : "-"), GUILayout.Width(120));
+                GUILayout.Label("HP: " + GetPlayerHPLabel(p), GUILayout.Width(180));
+                GUILayout.Label("XP: " + GetPlayerXPLabel(p), GUILayout.Width(180));
                 GUILayout.Label("XP Next: " + p.XPNeededForNextLevel, GUILayout.Width(120));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Stat Points: " + ReadInt(p, new string[] { "NumStatPoints", "numStatPoints" }), GUILayout.Width(180));
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
 
@@ -89,6 +89,34 @@ namespace CloudMeadow.CreativeMode
             catch (System.Exception e)
             {
                 GUILayout.Label("Player UI error: " + e.Message);
+            }
+        }
+
+        private string GetPlayerHPLabel(object statsObj)
+        {
+            try
+            {
+                var cur = ReadStat(statsObj, new string[] { "currentHP", "CurrentHP", "HPCurrent", "HP" });
+                var max = ReadStat(statsObj, new string[] { "MaxHP", "HPMax", "MaxHealth" });
+                return string.Format("{0}/{1}", cur != null ? Mathf.RoundToInt(System.Convert.ToSingle(cur)).ToString() : "-", max != null ? Mathf.RoundToInt(System.Convert.ToSingle(max)).ToString() : "-");
+            }
+            catch
+            {
+                return "-/-";
+            }
+        }
+
+        private string GetPlayerXPLabel(object statsObj)
+        {
+            try
+            {
+                var xp = ReadStat(statsObj, new string[] { "XPSinceLastLevel", "CurrentXP", "XP", "Experience" });
+                if (xp == null) return "-";
+                return Mathf.RoundToInt(System.Convert.ToSingle(xp)).ToString();
+            }
+            catch
+            {
+                return "-";
             }
         }
 

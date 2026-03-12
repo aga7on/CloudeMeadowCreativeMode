@@ -20,6 +20,9 @@ namespace CloudMeadow.CreativeMode
         private List<object> _roots = new List<object>();
         private string _filter = string.Empty;
         private int _maxDepth = 2;
+        private string _lastSceneName = string.Empty;
+        private object _lastStatusRef;
+        private int _lastDateStamp = int.MinValue;
 
         private void Start()
         {
@@ -28,6 +31,7 @@ namespace CloudMeadow.CreativeMode
 
         private void Update()
         {
+            CheckForGlobalContextChanges();
             if (Input.GetKeyDown(Plugin.ToggleOverlayKey.Value))
             {
                 _visible = !_visible;
@@ -118,6 +122,56 @@ namespace CloudMeadow.CreativeMode
             LogBuffer.Add("Rescanned scene objects");
         }
 
+        private void CheckForGlobalContextChanges()
+        {
+            try
+            {
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? string.Empty;
+                object statusRef = TeamNimbus.CloudMeadow.Managers.GameManager.IsGameStatusLoaded ? (object)TeamNimbus.CloudMeadow.Managers.GameManager.Status : null;
+                int dateStamp = int.MinValue;
+                if (statusRef != null)
+                {
+                    var dt = TeamNimbus.CloudMeadow.Managers.GameManager.Status.CurrentDateTime;
+                    dateStamp = dt.Year * 1000 + Convert.ToInt32(dt.Season) * 100 + dt.Day;
+                }
+
+                if (!string.Equals(sceneName, _lastSceneName, StringComparison.Ordinal) ||
+                    !object.ReferenceEquals(statusRef, _lastStatusRef) ||
+                    dateStamp != _lastDateStamp)
+                {
+                    ResetTransientUiCaches();
+                    _lastSceneName = sceneName;
+                    _lastStatusRef = statusRef;
+                    _lastDateStamp = dateStamp;
+                }
+            }
+            catch { }
+        }
+
+        private void ResetTransientUiCaches()
+        {
+            try
+            {
+                _statEdits.Clear();
+                _traitLevelEdits.Clear();
+                _monsterAddTraitWindow.Clear();
+                _addTraitFilter.Clear();
+                _addTraitPopupRect.Clear();
+                _addTraitScroll.Clear();
+                _addTraitDropdownOpen.Clear();
+                _addTraitSelectedIndex.Clear();
+                _cacheBloodlineBySpecies.Clear();
+                _cacheUniversalDefs.Clear();
+                _cacheOwnedTraitCodes.Clear();
+                _cacheSpeciesTraitDefsStatic.Clear();
+                _cacheStatLimitTraitDefsStatic.Clear();
+                _cacheBloodlineTraitDefsStatic.Clear();
+                _cacheUniversalTraitDefsStatic = null;
+                _allItemDefs = null;
+            }
+            catch { }
+        }
+
         // ===== Shared helpers (used across partial tabs) =====
         // Inline stat editor storage (shared for Player/Farm)
         private Dictionary<string, string> _statEdits = new Dictionary<string, string>();
@@ -125,9 +179,8 @@ namespace CloudMeadow.CreativeMode
         private void StatRow(string label, object statsObj, string statKey)
         {
             GUILayout.BeginHorizontal();
-            object cur = ReadStat(statsObj, new string[] { statKey });
-            GUILayout.Label(label + ": " + (cur != null ? cur.ToString() : "n/a"), GUILayout.Width(200));
-            string key = label;
+            GUILayout.Label(label + ": " + GetStatDisplayLabel(statsObj, statKey), GUILayout.Width(330));
+            string key = label + "@" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(statsObj).ToString();
             string edit;
             if (!_statEdits.TryGetValue(key, out edit)) edit = "";
             edit = GUILayout.TextField(edit, GUILayout.Width(80));
@@ -181,15 +234,34 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 var t = target.GetType();
-                var m = t.GetMethod("GetStatValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (m != null && m.GetParameters().Length == 1)
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var methods = t.GetMethods(flags);
+                int i;
+                for (i = 0; i < methods.Length; i++)
                 {
-                    var p = m.GetParameters()[0];
-                    if (p.ParameterType == typeof(string)) return m.Invoke(target, new object[] { (object)key });
-                    var ev = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.StatModifiers", key) ?? ResolveEnumValue("StatModifiers", key);
-                    if (ev != null && p.ParameterType.IsEnum && ev.GetType() == p.ParameterType)
+                    var m = methods[i];
+                    if (!string.Equals(m.Name, "GetStatValue", StringComparison.Ordinal)) continue;
+                    var ps = m.GetParameters();
+                    if (ps.Length == 1)
                     {
-                        return m.Invoke(target, new object[] { ev });
+                        var p = ps[0];
+                        if (p.ParameterType == typeof(string)) return m.Invoke(target, new object[] { (object)key });
+                        var ev = ResolveStatModifierEnumValue(key);
+                        if (ev != null && p.ParameterType.IsEnum && ev.GetType() == p.ParameterType)
+                        {
+                            return m.Invoke(target, new object[] { ev });
+                        }
+                    }
+                    else if (ps.Length == 2)
+                    {
+                        var p0 = ps[0];
+                        var p1 = ps[1];
+                        var ev = ResolveStatModifierEnumValue(key);
+                        var cond = ResolveEnumValue("TeamNimbus.CloudMeadow.ActiveModConditions", "None") ?? ResolveEnumValue("ActiveModConditions", "None");
+                        if (ev != null && cond != null && p0.ParameterType.IsEnum && p1.ParameterType.IsEnum && ev.GetType() == p0.ParameterType && cond.GetType() == p1.ParameterType)
+                        {
+                            return m.Invoke(target, new object[] { ev, cond });
+                        }
                     }
                 }
             }
@@ -264,7 +336,7 @@ namespace CloudMeadow.CreativeMode
                     if (p2.ParameterType == typeof(int)) { try { val = Convert.ToInt32(value); } catch { } }
                     if (p2.ParameterType == typeof(float)) { try { val = Convert.ToSingle(value); } catch { } }
                     if (p1.ParameterType == typeof(string)) { m2.Invoke(target, new object[] { (object)statKey, val }); return; }
-                    var ev = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.StatModifiers", statKey) ?? ResolveEnumValue("StatModifiers", statKey);
+                    var ev = ResolveStatModifierEnumValue(statKey);
                     if (ev != null && p1.ParameterType.IsEnum && ev.GetType() == p1.ParameterType)
                     { m2.Invoke(target, new object[] { ev, val }); return; }
                 }
@@ -284,34 +356,127 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
                 var t = statsObj.GetType();
-                var getData = t.GetMethod("GetPrimaryStatData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var incr = t.GetMethod("IncreasePrimaryStatCustomValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (getData == null || incr == null) { TrySetStat(statsObj, statKey, targetValue); return; }
+                var getData = t.GetMethod("GetPrimaryStatData", flags);
+                var setBaseStat = t.GetMethod("SetBaseStat", flags);
                 var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
-                if (primEnum == null) { TrySetStat(statsObj, statKey, targetValue); return; }
-                // Query current and max
+                var statEnum = ResolveStatModifierEnumValue(statKey);
+                if (getData == null || setBaseStat == null || primEnum == null || statEnum == null) { TrySetStat(statsObj, statKey, targetValue); return; }
                 var psd = getData.Invoke(statsObj, new object[] { primEnum });
                 if (psd != null)
                 {
                     var psdType = psd.GetType();
                     var baseValue = Convert.ToInt32(psdType.GetProperty("BaseValue").GetValue(psd, null));
+                    var customValue = Convert.ToInt32(psdType.GetProperty("CustomValue").GetValue(psd, null));
                     var maxCustom = Convert.ToInt32(psdType.GetProperty("MaxCustomValue").GetValue(psd, null));
                     var growth = Convert.ToSingle(psdType.GetProperty("GrowthValue").GetValue(psd, null));
-                    // Clamp target to achievable BaseValue = Growth + Custom (Custom <= MaxCustomValue)
-                    int maxBase = Mathf.RoundToInt(growth + (float)maxCustom);
-                    if (targetValue > maxBase) targetValue = maxBase;
-                    int currentBase = Convert.ToInt32(ReadStat(statsObj, new string[] { statKey }));
-                    int delta = targetValue - currentBase;
-                    if (delta > 0)
+                    int growthBase = Mathf.RoundToInt(growth);
+                    int minBase = growthBase;
+                    int maxBase = growthBase + maxCustom;
+                    targetValue = Mathf.Clamp(targetValue, minBase, maxBase);
+                    int desiredCustom = Mathf.Clamp(targetValue - growthBase, 0, maxCustom);
+
+                    if (desiredCustom != customValue)
                     {
-                        incr.Invoke(statsObj, new object[] { primEnum, delta });
+                        setBaseStat.Invoke(statsObj, new object[] { statEnum, (float)desiredCustom });
+                        if (string.Equals(statKey, "Stamina", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int deltaCustom = desiredCustom - customValue;
+                            if (deltaCustom != 0)
+                            {
+                                float curHp = 0f;
+                                object curHpObj = ReadStat(statsObj, new string[] { "GetCurrentHP", "currentHP", "CurrentHP", "HPCurrent" });
+                                try { if (curHpObj != null) curHp = Convert.ToSingle(curHpObj); } catch { }
+                                var updateHp = t.GetMethod("UpdateCurrentHP", flags);
+                                if (updateHp != null)
+                                {
+                                    updateHp.Invoke(statsObj, new object[] { curHp + (float)(deltaCustom * 5) });
+                                }
+                            }
+                        }
+                    }
+                    else if (targetValue != baseValue)
+                    {
+                        // If growth rounding caused a mismatch, force exact custom from the clamped target.
+                        setBaseStat.Invoke(statsObj, new object[] { statEnum, (float)desiredCustom });
                     }
                 }
             }
             catch
             {
                 TrySetStat(statsObj, statKey, targetValue);
+            }
+        }
+
+        private object ResolveStatModifierEnumValue(string statKey)
+        {
+            return ResolveEnumValue("TeamNimbus.CloudMeadow.StatModifiers", statKey) ??
+                   ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.StatModifiers", statKey) ??
+                   ResolveEnumValue("StatModifiers", statKey);
+        }
+
+        private string GetStatDisplayLabel(object statsObj, string statKey)
+        {
+            if (IsPrimaryStatKey(statKey))
+            {
+                int effective;
+                int baseValue;
+                float growth;
+                int custom;
+                int maxCustom;
+                if (TryGetPrimaryStatInfo(statsObj, statKey, out effective, out baseValue, out growth, out custom, out maxCustom))
+                {
+                    if (effective != baseValue)
+                    {
+                        return string.Format("{0} (base {1} | G {2:0.#} + C {3}/{4})", effective, baseValue, growth, custom, maxCustom);
+                    }
+                    return string.Format("{0} (G {1:0.#} + C {2}/{3})", baseValue, growth, custom, maxCustom);
+                }
+            }
+
+            object cur = ReadStat(statsObj, new string[] { statKey });
+            return cur != null ? cur.ToString() : "n/a";
+        }
+
+        private bool TryGetPrimaryStatInfo(object statsObj, string statKey, out int effectiveValue, out int baseValue, out float growthValue, out int customValue, out int maxCustomValue)
+        {
+            effectiveValue = 0;
+            baseValue = 0;
+            growthValue = 0f;
+            customValue = 0;
+            maxCustomValue = 0;
+
+            try
+            {
+                var t = statsObj.GetType();
+                var getData = t.GetMethod("GetPrimaryStatData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                if (getData == null || primEnum == null) return false;
+
+                var psd = getData.Invoke(statsObj, new object[] { primEnum });
+                if (psd == null) return false;
+
+                var psdType = psd.GetType();
+                baseValue = Convert.ToInt32(psdType.GetProperty("BaseValue").GetValue(psd, null));
+                growthValue = Convert.ToSingle(psdType.GetProperty("GrowthValue").GetValue(psd, null));
+                customValue = Convert.ToInt32(psdType.GetProperty("CustomValue").GetValue(psd, null));
+                maxCustomValue = Convert.ToInt32(psdType.GetProperty("MaxCustomValue").GetValue(psd, null));
+
+                object effectiveObj = InvokeGetStatValue(statsObj, statKey);
+                if (effectiveObj != null)
+                {
+                    effectiveValue = Mathf.RoundToInt(Convert.ToSingle(effectiveObj));
+                }
+                else
+                {
+                    effectiveValue = baseValue;
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 

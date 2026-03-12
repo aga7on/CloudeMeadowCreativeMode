@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+.dotnet/
+*.user
+*.suo
+*.log
+*.tmp
+*.bak
+*.zip
+creative_startup.log
+tmp_rovodev_*.txt
+tmp_rovodev_*.log
+traits_report.txt

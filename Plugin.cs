@@ -21,6 +21,7 @@ namespace CloudMeadow.CreativeMode
         internal static ConfigEntry<KeyCode> ToggleOverlayKey;
         internal static ConfigEntry<KeyCode> UnlockGalleryKey;
         internal static ConfigEntry<KeyCode> RefreshScanKey;
+        internal static ConfigEntry<bool> VerboseDiagnostics;
 
         private string _startupLogPath;
 
@@ -45,6 +46,7 @@ namespace CloudMeadow.CreativeMode
             ToggleOverlayKey = Config.Bind("Hotkeys", "ToggleOverlay", KeyCode.F6, "Toggle the Creative Mode overlay");
             UnlockGalleryKey = Config.Bind("Hotkeys", "UnlockGallery", KeyCode.F7, "Attempt to unlock gallery");
             RefreshScanKey = Config.Bind("Hotkeys", "RefreshScan", KeyCode.F8, "Rescan scene for game objects");
+            VerboseDiagnostics = Config.Bind("Debug", "VerboseDiagnostics", false, "Write detailed diagnostic logs for fallback reflection paths");
 
             try
             {
@@ -54,16 +56,6 @@ namespace CloudMeadow.CreativeMode
             catch (Exception ex)
             {
                 AppendStartup("UIOverlay add failed: " + ex);
-            }
-
-            try
-            {
-                gameObject.AddComponent<GameEventsListener>();
-                AppendStartup("GameEventsListener added");
-            }
-            catch (Exception ex)
-            {
-                AppendStartup("GameEventsListener add failed: " + ex);
             }
 
             LogBuffer.Add("Creative Mode plugin initialized");

@@ -148,6 +148,16 @@ namespace CloudMeadow.CreativeMode
             catch (Exception e) { Plugin.Log.LogWarning("WinCombat failed: " + e.Message); }
         }
         public static bool Ready { get { return Application.isPlaying && GameManager.Instance != null && GameManager.IsGameStatusLoaded; } }
+        public static bool VerboseDiagnosticsEnabled
+        {
+            get { return Plugin.VerboseDiagnostics != null && Plugin.VerboseDiagnostics.Value; }
+        }
+
+        public static void SetVerboseDiagnostics(bool enabled)
+        {
+            if (Plugin.VerboseDiagnostics != null) Plugin.VerboseDiagnostics.Value = enabled;
+            Banner("Verbose diagnostics: " + (enabled ? "ON" : "OFF"));
+        }
 
         public static void UnlockAllGallery()
         {
@@ -205,6 +215,279 @@ namespace CloudMeadow.CreativeMode
         public static void GiveEveryMonster()
         {
             try { TeamNimbus.CloudMeadow.Combat.DebugCheats.AddAllMonsters(Mathf.Max(GameManager.Status.ProtagonistStats.Level, 15)); LogBuffer.Add("Give all monsters"); } catch (Exception e) { Plugin.Log.LogWarning(e.ToString()); }
+        }
+
+        public static void AddMonster(string speciesName, int level)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(speciesName)) speciesName = "Chimera";
+                if (level < 1) level = 1;
+
+                FarmableSpecies species = (FarmableSpecies)Enum.Parse(typeof(FarmableSpecies), speciesName, true);
+                TeamNimbus.CloudMeadow.Combat.DebugCheats.AddMonster(species, level, Gender.Other);
+                LogBuffer.Add("Added monster: " + species + " Lv" + level);
+                Banner("Added monster: " + species + " Lv" + level);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("AddMonster failed: " + e.Message);
+            }
+        }
+
+        public static string[] GetSpeciesTraitNamesForSpecies(string speciesName)
+        {
+            var defs = GetSpeciesTraitDefinitionsForSpecies(speciesName);
+            var names = new System.Collections.Generic.List<string>();
+            int i;
+            for (i = 0; i < defs.Length; i++)
+            {
+                var def = defs[i];
+                string name = ReadStringFromTraitDefinition(def);
+                if (!string.IsNullOrEmpty(name) && names.IndexOf(name) < 0) names.Add(name);
+            }
+            if (names.Count == 0 && string.Equals(speciesName, "Chimera", StringComparison.OrdinalIgnoreCase))
+            {
+                names.Add("QuickOnTheWing");
+                names.Add("AlchemicalGenes");
+            }
+            return names.ToArray();
+        }
+
+        public static object[] GetSpeciesTraitDefinitionsForSpeciesUI(string speciesName)
+        {
+            return GetSpeciesTraitDefinitionsForSpecies(speciesName);
+        }
+
+        public static object[] GetStatLimitTraitDefinitionsForSpeciesUI(string speciesName)
+        {
+            try
+            {
+                var statLimitType = Type.GetType("TeamNimbus.CloudMeadow.Traits.BaseStatLimitTraitDefinition, Game");
+                var list = new System.Collections.Generic.List<object>();
+                object[] source;
+                if (string.Equals(speciesName, "Chimera", StringComparison.OrdinalIgnoreCase))
+                {
+                    source = GetAllBloodlineTraitDefinitionsForAllSpecies();
+                }
+                else
+                {
+                    var grouped = GroupBloodlineTraitsBySpecies(GetAllBloodlineTraitDefinitionsForAllSpecies());
+                    source = grouped.ContainsKey(speciesName) ? grouped[speciesName].ToArray() : new object[0];
+                }
+
+                int i;
+                for (i = 0; i < source.Length; i++)
+                {
+                    var d = source[i];
+                    if (d != null && statLimitType != null && statLimitType.IsInstanceOfType(d)) list.Add(d);
+                }
+                return DedupTraitDefinitionsByCode(list.ToArray());
+            }
+            catch { }
+            return new object[0];
+        }
+
+        public static object[] GetBloodlineTraitDefinitionsForSpeciesUI(string speciesName)
+        {
+            try
+            {
+                var grouped = GroupBloodlineTraitsBySpecies(GetAllBloodlineTraitDefinitionsForAllSpecies());
+                var source = grouped.ContainsKey(speciesName) ? grouped[speciesName].ToArray() : new object[0];
+                var statLimitType = Type.GetType("TeamNimbus.CloudMeadow.Traits.BaseStatLimitTraitDefinition, Game");
+                var list = new System.Collections.Generic.List<object>();
+                int i;
+                for (i = 0; i < source.Length; i++)
+                {
+                    var d = source[i];
+                    if (d == null) continue;
+                    if (statLimitType != null && statLimitType.IsInstanceOfType(d)) continue;
+                    list.Add(d);
+                }
+                return DedupTraitDefinitionsByCode(list.ToArray());
+            }
+            catch { }
+            return new object[0];
+        }
+
+        public static void SpawnChimeraVariant(string variantName, int level)
+        {
+            try
+            {
+                Diag("SpawnChimeraVariant request: " + variantName + " Lv" + level);
+                var monster = SpawnMonsterAndReturnRef(FarmableSpecies.Chimera, level);
+                if (monster == null)
+                {
+                    Banner("Chimera spawn failed");
+                    return;
+                }
+
+                var defs = GetSpeciesTraitDefinitionsForSpecies("Chimera");
+                object selected = FindTraitDefinitionByName(defs, variantName);
+                if (selected == null && defs.Length > 0) selected = defs[0];
+
+                if (selected != null)
+                {
+                    SetMonsterSpeciesTrait(monster, selected, 1);
+                    Diag("SpawnChimeraVariant applied species trait: " + ReadStringFromTraitDefinition(selected));
+                    Banner("Spawned Chimera: " + ReadStringFromTraitDefinition(selected) + " Lv" + level);
+                    return;
+                }
+
+                Banner("Spawned Chimera Lv" + level);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SpawnChimeraVariant failed: " + e.Message);
+            }
+        }
+
+        public static bool SetChimeraVariant(object monster, string variantName, int grade)
+        {
+            try
+            {
+                if (monster == null || string.IsNullOrEmpty(variantName)) return false;
+                if (!string.Equals(GetMonsterSpecies(monster), "Chimera", StringComparison.OrdinalIgnoreCase)) return false;
+
+                var defs = GetSpeciesTraitDefinitionsForSpecies("Chimera");
+                var selected = FindTraitDefinitionByName(defs, variantName);
+                if (selected == null) return false;
+
+                Diag("SetChimeraVariant -> " + variantName + " grade " + grade);
+                return SetMonsterSpeciesTrait(monster, selected, grade < 1 ? 1 : grade);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetChimeraVariant failed: " + e.Message);
+            }
+            return false;
+        }
+
+        private static MonsterCharacterStats SpawnMonsterAndReturnRef(FarmableSpecies species, int level)
+        {
+            try
+            {
+                var before = new System.Collections.Generic.HashSet<MonsterCharacterStats>();
+                foreach (var m in GameManager.Status.EnumerateActiveMonsters())
+                {
+                    if (m != null) before.Add(m);
+                }
+
+                TeamNimbus.CloudMeadow.Combat.DebugCheats.AddMonster(species, level, Gender.Other);
+
+                foreach (var m2 in GameManager.Status.EnumerateActiveMonsters())
+                {
+                    if (m2 != null && !before.Contains(m2)) return m2;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static object[] GetSpeciesTraitDefinitionsForSpecies(string speciesName)
+        {
+            try
+            {
+                var lib = GameManager.MonsterTraitLibrary;
+                if (lib == null) return new object[0];
+
+                FarmableSpecies species = (FarmableSpecies)Enum.Parse(typeof(FarmableSpecies), speciesName, true);
+                var traitsByType = ReflectionUtil.GetPrivateMethod(lib, "ResolveMonsterTraitsByType").Invoke(lib, new object[] { species });
+                if (traitsByType == null) return new object[0];
+
+                var arr = traitsByType.GetType().GetField("OtherSpeciesTraits").GetValue(traitsByType) as System.Array;
+                if (arr == null) return new object[0];
+
+                var list = new System.Collections.Generic.List<object>(arr.Length);
+                int i;
+                for (i = 0; i < arr.Length; i++)
+                {
+                    var v = arr.GetValue(i);
+                    if (v != null) list.Add(v);
+                }
+                return list.ToArray();
+            }
+            catch { }
+            return new object[0];
+        }
+
+        private static object FindTraitDefinitionByName(object[] defs, string name)
+        {
+            if (defs == null || defs.Length == 0) return null;
+            int i;
+            for (i = 0; i < defs.Length; i++)
+            {
+                string cur = ReadStringFromTraitDefinition(defs[i]);
+                if (string.Equals(cur, name, StringComparison.OrdinalIgnoreCase)) return defs[i];
+            }
+            for (i = 0; i < defs.Length; i++)
+            {
+                string cur2 = ReadStringFromTraitDefinition(defs[i]);
+                if (!string.IsNullOrEmpty(cur2) && !string.IsNullOrEmpty(name) && cur2.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0) return defs[i];
+            }
+            return null;
+        }
+
+        private static string ReadStringFromTraitDefinition(object def)
+        {
+            if (def == null) return string.Empty;
+            var name = SafeProp(def, "DisplayName") ?? SafeProp(def, "Name") ?? SafeProp(def, "Code") ?? SafeProp(def, "TraitCode");
+            return name != null ? name.ToString() : def.ToString();
+        }
+
+        private static bool SetMonsterSpeciesTrait(object monster, object traitDefinition, int grade)
+        {
+            try
+            {
+                var def = UnwrapTraitDefinition(traitDefinition) as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition;
+                if (def == null || monster == null) return false;
+
+                var trait = new TeamNimbus.CloudMeadow.Traits.TraitInstance(def, Mathf.Clamp(grade, 1, 5));
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var field = monster.GetType().GetField("_speciesTrait", flags);
+                if (field == null) return false;
+
+                field.SetValue(monster, trait);
+                SyncSpecialSpeciesTraitState(monster, def);
+                RefreshMonsterAfterTrait(monster);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetMonsterSpeciesTrait failed: " + e.Message);
+            }
+            return false;
+        }
+
+        private static void SyncSpecialSpeciesTraitState(object monster, TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition def)
+        {
+            try
+            {
+                if (monster == null) return;
+
+                var m = monster as MonsterCharacterStats;
+                if (m == null) return;
+
+                int abilityIndex = -1;
+                int stateIndex = 0;
+                if (m.FarmableSpecies == FarmableSpecies.Chimera)
+                {
+                    abilityIndex = 3;
+                    stateIndex = (def != null && object.ReferenceEquals(def, GameManager.MonsterTraitLibrary.LeechingCompoundTrait)) ? 1 : 0;
+                }
+                else if (m.FarmableSpecies == FarmableSpecies.Holstaur)
+                {
+                    abilityIndex = 2;
+                    stateIndex = (def != null && object.ReferenceEquals(def, GameManager.MonsterTraitLibrary.MadCowTrait)) ? 1 : 0;
+                }
+
+                if (abilityIndex >= 0)
+                {
+                    var changeState = m.GetType().BaseType.GetMethod("ChangeAbilityState", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (changeState != null) changeState.Invoke(m, new object[] { abilityIndex, stateIndex });
+                }
+            }
+            catch { }
         }
 
         public static void RecruitAllCompanions(int level)
@@ -275,6 +558,7 @@ namespace CloudMeadow.CreativeMode
             {
                 var inv = GameManager.Status.Inventory;
                 var list = new System.Collections.Generic.List<object>();
+                var seen = new System.Collections.Generic.HashSet<object>();
                 var t = inv.GetType();
                 var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
                 var props = t.GetProperties(flags);
@@ -282,14 +566,14 @@ namespace CloudMeadow.CreativeMode
                 {
                     var p = props[i];
                     object val = null; try { val = p.GetValue(inv, null); } catch { }
-                    AppendEntryEnumerable(list, val);
+                    AppendEntryEnumerable(list, seen, val);
                 }
                 var fields = t.GetFields(flags);
                 for (int i = 0; i < fields.Length; i++)
                 {
                     var f = fields[i];
                     object val = null; try { val = f.GetValue(inv); } catch { }
-                    AppendEntryEnumerable(list, val);
+                    AppendEntryEnumerable(list, seen, val);
                 }
                 return list.ToArray();
             }
@@ -297,7 +581,7 @@ namespace CloudMeadow.CreativeMode
             return new object[0];
         }
 
-        private static void AppendEntryEnumerable(System.Collections.Generic.List<object> list, object val)
+        private static void AppendEntryEnumerable(System.Collections.Generic.List<object> list, System.Collections.Generic.HashSet<object> seen, object val)
         {
             if (val == null) return;
             var en = val as System.Collections.IEnumerable; if (en == null || val is string) return;
@@ -305,7 +589,7 @@ namespace CloudMeadow.CreativeMode
             {
                 if (it == null) continue;
                 var tn = it.GetType().FullName;
-                if (tn != null && (tn.IndexOf("Entry") >= 0 || tn.IndexOf("ItemEntry") >= 0)) list.Add(it);
+                if (tn != null && (tn.IndexOf("Entry") >= 0 || tn.IndexOf("ItemEntry") >= 0) && seen.Add(it)) list.Add(it);
             }
         }
 
@@ -313,33 +597,54 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
-                var tDef = def.GetType();
-                qualityIndex = ClampQualityIndex(qualityIndex);
-                var itemQualityType = typeof(TeamNimbus.CloudMeadow.Items.ItemQuality);
-                object quality = System.Enum.ToObject(itemQualityType, qualityIndex);
+                var baseDef = def as BaseItemDefinition;
+                if (baseDef == null) return null;
 
-                // Prefer CreateItemEntry(count, quality)
-                var mi = tDef.GetMethod("CreateItemEntry", new System.Type[] { typeof(int), itemQualityType });
-                if (mi != null)
-                {
-                    return mi.Invoke(def, new object[] { amount, quality });
-                }
-                // Special-case: EggItemDefinition -> EggItemEntry(def, true)
-                var eggType = typeof(TeamNimbus.CloudMeadow.Items.EggItemDefinition);
-                if (eggType.IsAssignableFrom(tDef))
-                {
-                    var eggEntryType = typeof(TeamNimbus.CloudMeadow.Inventory.EggItemEntry);
-                    return System.Activator.CreateInstance(eggEntryType, new object[] { def, true });
-                }
-                // Fallback: StandardItemEntry(def, quality, amount)
-                var sei = typeof(TeamNimbus.CloudMeadow.Inventory.StandardItemEntry);
-                return System.Activator.CreateInstance(sei, new object[] { def, quality, amount });
+                ItemQuality quality = ResolveNearestAllowedQuality(baseDef, qualityIndex);
+                return InventoryEntryExtensions.CreateItemEntry(baseDef, amount, quality);
             }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning("CreateEntry failed: " + e.Message);
                 return null;
             }
+        }
+
+        private static ItemQuality ResolveNearestAllowedQuality(BaseItemDefinition def, int preferredQualityIndex)
+        {
+            preferredQualityIndex = ClampQualityIndex(preferredQualityIndex);
+            ItemQuality preferred = (ItemQuality)preferredQualityIndex;
+            if (def == null) return preferred;
+            if (def.ItemAvailableWithQuality(preferred)) return preferred;
+
+            int q;
+            for (q = preferredQualityIndex; q >= (int)ItemQuality.OneStar; q--)
+            {
+                ItemQuality candidate = (ItemQuality)q;
+                if (def.ItemAvailableWithQuality(candidate)) return candidate;
+            }
+
+            for (q = preferredQualityIndex + 1; q <= (int)ItemQuality.FiveStar; q++)
+            {
+                ItemQuality candidate2 = (ItemQuality)q;
+                if (def.ItemAvailableWithQuality(candidate2)) return candidate2;
+            }
+
+            return def.ResolveMinQuality();
+        }
+
+        private static ItemQuality ResolveMaxAllowedQuality(BaseItemDefinition def)
+        {
+            if (def == null) return ItemQuality.OneStar;
+
+            int q;
+            for (q = (int)ItemQuality.FiveStar; q >= (int)ItemQuality.OneStar; q--)
+            {
+                ItemQuality candidate = (ItemQuality)q;
+                if (def.ItemAvailableWithQuality(candidate)) return candidate;
+            }
+
+            return def.ResolveMinQuality();
         }
 
         private static int ClampQualityIndex(int q)
@@ -454,23 +759,92 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
-                // Replace by: add new max-quality entry FIRST, then remove old entry
-                var def = GetEntryDefinition(entry);
-                int qty = GetEntryQuantity(entry);
-                if (qty <= 0) qty = 1;
-                var maxQ = (int)TeamNimbus.CloudMeadow.Items.ItemQuality.FiveStar;
-                var newEntry = CreateEntry(def, qty, maxQ) as TeamNimbus.CloudMeadow.Inventory.IItemEntry;
-                if (newEntry != null)
-                {
-                    GameManager.Status.Inventory.AddItemEntry(newEntry);
-                    TryRemoveEntry(entry);
-                }
-                else
-                {
-                    Plugin.Log.LogWarning("SetEntryMaxQuality: could not create new entry");
-                }
+                UpgradeEntryToMaxQuality(entry, true);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetEntryMaxQuality failed: " + e.Message); }
+        }
+
+        public static void SetAllInventoryEntriesMaxQuality()
+        {
+            try
+            {
+                var entries = GetInventoryEntries();
+                int upgraded = 0;
+                int i;
+                for (i = 0; i < entries.Length; i++)
+                {
+                    if (UpgradeEntryToMaxQuality(entries[i], false)) upgraded++;
+                }
+                Banner("Max quality applied: " + upgraded);
+                LogBuffer.Add("Inventory max quality upgraded: " + upgraded);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetAllInventoryEntriesMaxQuality failed: " + e.Message); }
+        }
+
+        private static bool UpgradeEntryToMaxQuality(object entry, bool showBanner)
+        {
+            try
+            {
+                var def = GetEntryDefinition(entry);
+                var baseDef = def as BaseItemDefinition;
+                if (baseDef == null) return false;
+
+                int qty = GetEntryQuantity(entry);
+                if (qty <= 0) qty = 1;
+                ItemQuality targetQuality = ResolveMaxAllowedQuality(baseDef);
+                if (GetEntryQuality(entry) == targetQuality)
+                {
+                    var itemKey = SafeProp(baseDef, "Code") ?? SafeProp(baseDef, "Name") ?? baseDef.ToString();
+                    Diag("UpgradeEntryToMaxQuality skipped (already max): " + itemKey);
+                    if (showBanner) Banner("Item already at max quality");
+                    return false;
+                }
+
+                var newEntry = CreateEntry(def, qty, (int)targetQuality) as TeamNimbus.CloudMeadow.Inventory.IItemEntry;
+                if (newEntry == null)
+                {
+                    Plugin.Log.LogWarning("UpgradeEntryToMaxQuality: could not create new entry");
+                    return false;
+                }
+
+                GameManager.Status.Inventory.AddItemEntry(newEntry);
+                TryRemoveEntry(entry);
+                var itemKey2 = SafeProp(baseDef, "Code") ?? SafeProp(baseDef, "Name") ?? baseDef.ToString();
+                Diag("UpgradeEntryToMaxQuality success: " + itemKey2 + " -> " + targetQuality);
+                if (showBanner) Banner("Item upgraded to " + targetQuality);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("UpgradeEntryToMaxQuality failed: " + e.Message);
+            }
+            return false;
+        }
+
+        private static ItemQuality GetEntryQuality(object entry)
+        {
+            try
+            {
+                var t = entry.GetType();
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase;
+                var prop = t.GetProperty("Quality", flags);
+                if (prop != null)
+                {
+                    var val = prop.GetValue(entry, null);
+                    if (val is ItemQuality) return (ItemQuality)val;
+                    if (val != null) return (ItemQuality)Convert.ToInt32(val);
+                }
+
+                var field = t.GetField("itemQuality", flags) ?? t.GetField("Quality", flags);
+                if (field != null)
+                {
+                    var val2 = field.GetValue(entry);
+                    if (val2 is ItemQuality) return (ItemQuality)val2;
+                    if (val2 != null) return (ItemQuality)Convert.ToInt32(val2);
+                }
+            }
+            catch { }
+            return ItemQuality.OneStar;
         }
 
         private static object GetEntryDefinition(object entry)
@@ -557,19 +931,89 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
-                var eggs = GetIncubatorEggs();
                 int cnt = 0;
-                if (eggs != null)
+                var farmStatus = GameManager.Status.FarmStatus;
+                int shelfIndex;
+                for (shelfIndex = (int)TeamNimbus.CloudMeadow.UI.Farm.IncubatorShelfID.TopLeft; shelfIndex < (int)TeamNimbus.CloudMeadow.UI.Farm.IncubatorShelfID.COUNT; shelfIndex++)
                 {
-                    for (int i = 0; i < eggs.Length; i++)
+                    var shelf = farmStatus.GetIncubatorShelfData((TeamNimbus.CloudMeadow.UI.Farm.IncubatorShelfID)shelfIndex);
+                    if (shelf == null) continue;
+
+                    var eggsField = shelf.GetType().GetField("eggsIncubating", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var rawList = eggsField != null ? eggsField.GetValue(shelf) as System.Collections.IList : null;
+                    if (rawList == null) continue;
+
+                    int i;
+                    for (i = 0; i < rawList.Count; i++)
                     {
-                        var e = eggs[i]; if (e == null) continue;
-                        try { HatchEgg(e); cnt++; } catch { }
+                        object record = rawList[i];
+                        if (record == null) continue;
+                        if (SetEggReady(record))
+                        {
+                            rawList[i] = record;
+                            cnt++;
+                        }
                     }
                 }
-                Banner("Hatch All: processed " + cnt + " eggs");
+
+                RefreshIncubatorVisuals();
+                Banner("HATCH ALL EGGS: " + cnt + " ready");
             }
             catch (Exception ex) { Plugin.Log.LogWarning("HatchAllEggs failed: " + ex.Message); }
+        }
+
+        private static bool SetEggReady(object record)
+        {
+            try
+            {
+                if (record == null) return false;
+
+                object readyDate = GameManager.Status.CurrentDateTime;
+                TryWriteIntField(readyDate, "year", "Year", 1);
+                TryWriteIntField(readyDate, "season", "Season", 0);
+                TryWriteIntField(readyDate, "day", "Day", 1);
+                TryWriteIntField(readyDate, "hour", "Hour", 0);
+                TryWriteIntField(readyDate, "minute", "Minute", 0);
+
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var hdProp = record.GetType().GetProperty("hatchingDate", flags)
+                          ?? record.GetType().GetProperty("HatchingDate", flags);
+                if (hdProp != null && hdProp.CanWrite)
+                {
+                    hdProp.SetValue(record, readyDate, null);
+                    return true;
+                }
+
+                var hdField = record.GetType().GetField("hatchingDate", flags)
+                           ?? record.GetType().GetField("HatchingDate", flags);
+                if (hdField != null)
+                {
+                    hdField.SetValue(record, readyDate);
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetEggReady failed: " + e.Message);
+            }
+            return false;
+        }
+
+        private static void RefreshIncubatorVisuals()
+        {
+            try
+            {
+                var incubators = UnityEngine.Object.FindObjectsOfType<TeamNimbus.CloudMeadow.Farm.MonsterIncubator>();
+                int i;
+                for (i = 0; i < incubators.Length; i++)
+                {
+                    if (incubators[i] != null) incubators[i].RefreshEggs();
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("RefreshIncubatorVisuals failed: " + e.Message);
+            }
         }
 
         public static object[] GetIncubatorEggs()
@@ -1332,6 +1776,9 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
+                var m = monster as MonsterCharacterStats;
+                if (m == null) throw new InvalidOperationException("MonsterCharacterStats expected");
+
                 var t = monster.GetType();
                 // Resolve FarmableSpecies enum from Game.dll
                 var speciesEnum = Type.GetType("TeamNimbus.CloudMeadow.Monsters.FarmableSpecies, Game", false)
@@ -1350,6 +1797,17 @@ namespace CloudMeadow.CreativeMode
                     }
                 }
                 if (enumVal == null) throw new ArgumentException("Unknown species: " + speciesName);
+
+                var targetSpecies = (FarmableSpecies)enumVal;
+                var oldSpecies = m.FarmableSpecies;
+                var oldGender = m.Gender;
+                if (oldSpecies == targetSpecies)
+                {
+                    Diag("SetMonsterSpecies no-op: " + oldSpecies);
+                    return;
+                }
+
+                Diag("SetMonsterSpecies " + oldSpecies + " -> " + targetSpecies + " (gender " + oldGender + ")");
 
                 // 1) Preferred: if there is a dedicated method (rare), use it
                 var changeMethod = t.GetMethod("ChangeMonsterSpecies", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
@@ -1387,30 +1845,6 @@ namespace CloudMeadow.CreativeMode
                     }
                     catch { }
 
-                    // 2b) Try to align palette to species by casting to MonsterPalette and calling ChangeMonsterPalette
-                    try
-                    {
-                        var paletteEnum = Type.GetType("TeamNimbus.CloudMeadow.Monsters.MonsterPalette, Game", false)
-                                         ?? Type.GetType("TeamNimbus.CloudMeadow.Monsters.MonsterPalette", false);
-                        if (paletteEnum != null && paletteEnum.IsEnum)
-                        {
-                            // cast enum by underlying value
-                            var underlying = Convert.ChangeType(enumVal, Enum.GetUnderlyingType(speciesEnum));
-                            var paletteVal = Enum.ToObject(paletteEnum, Convert.ChangeType(underlying, Enum.GetUnderlyingType(paletteEnum)));
-                            var changePalette = t.GetMethod("ChangeMonsterPalette", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                            if (changePalette != null && changePalette.GetParameters().Length == 1)
-                            {
-                                changePalette.Invoke(monster, new object[] { paletteVal });
-                            }
-                            else
-                            {
-                                var fPalette = t.GetField("palette", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                                if (fPalette != null) fPalette.SetValue(monster, paletteVal);
-                            }
-                        }
-                    }
-                    catch { }
-
                     // 2c) Reinitialize data assets and definitions to be safe
                     try
                     {
@@ -1437,8 +1871,184 @@ namespace CloudMeadow.CreativeMode
                     }
                     catch { }
                 }
+
+                NormalizeMonsterAfterSpeciesSwap(m, oldSpecies, oldGender, targetSpecies);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetMonsterSpecies failed: " + e.Message); }
+        }
+
+        private static void NormalizeMonsterAfterSpeciesSwap(MonsterCharacterStats monster, FarmableSpecies oldSpecies, Gender oldGender, FarmableSpecies targetSpecies)
+        {
+            try
+            {
+                if (monster == null) return;
+
+                SetMonsterGenderForSpeciesSwap(monster, oldGender, targetSpecies);
+                SetMonsterPaletteToSpeciesDefault(monster, targetSpecies);
+                NormalizeSpeciesTraitForSpecies(monster, targetSpecies);
+                ReapplyDefaultStatLimitTraitsForSpecies(monster, targetSpecies);
+                ReinitializeMonsterDataAssets(monster);
+                ResetMonsterCombatStateAfterSpeciesSwap(monster);
+                RefreshMonsterAfterTrait(monster);
+
+                Banner("Type -> " + targetSpecies);
+                LogBuffer.Add("Monster type " + oldSpecies + " -> " + targetSpecies);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("NormalizeMonsterAfterSpeciesSwap failed: " + e.Message);
+            }
+        }
+
+        private static void SetMonsterGenderForSpeciesSwap(MonsterCharacterStats monster, Gender oldGender, FarmableSpecies targetSpecies)
+        {
+            try
+            {
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+                var fGender = monster.GetType().GetField("gender", flags);
+                if (fGender == null) return;
+
+                Gender newGender = oldGender;
+                if (targetSpecies == FarmableSpecies.Chimera || targetSpecies == FarmableSpecies.Crab)
+                {
+                    newGender = Gender.Other;
+                }
+                else if (oldGender == Gender.Other)
+                {
+                    try { newGender = GameManager.Status.ResolveNextGender(targetSpecies); }
+                    catch { newGender = Gender.Female; }
+                }
+
+                fGender.SetValue(monster, newGender);
+                Diag("SetMonsterGenderForSpeciesSwap -> " + newGender);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetMonsterGenderForSpeciesSwap failed: " + e.Message);
+            }
+        }
+
+        private static void SetMonsterPaletteToSpeciesDefault(MonsterCharacterStats monster, FarmableSpecies targetSpecies)
+        {
+            try
+            {
+                var t = monster.GetType();
+                var paletteEnum = Type.GetType("TeamNimbus.CloudMeadow.Monsters.MonsterPalette, Game", false)
+                                 ?? Type.GetType("TeamNimbus.CloudMeadow.Monsters.MonsterPalette", false);
+                if (paletteEnum == null || !paletteEnum.IsEnum) return;
+
+                var paletteVal = Enum.ToObject(paletteEnum, (int)targetSpecies);
+                var changePalette = t.GetMethod("ChangeMonsterPalette", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (changePalette != null && changePalette.GetParameters().Length == 1)
+                {
+                    changePalette.Invoke(monster, new object[] { paletteVal });
+                }
+                else
+                {
+                    var fPalette = t.GetField("palette", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    if (fPalette != null) fPalette.SetValue(monster, paletteVal);
+                }
+                Diag("SetMonsterPaletteToSpeciesDefault -> " + targetSpecies);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetMonsterPaletteToSpeciesDefault failed: " + e.Message);
+            }
+        }
+
+        private static void NormalizeSpeciesTraitForSpecies(MonsterCharacterStats monster, FarmableSpecies targetSpecies)
+        {
+            try
+            {
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+                var speciesField = monster.GetType().GetField("_speciesTrait", flags);
+                if (speciesField == null) return;
+
+                object currentTrait = speciesField.GetValue(monster);
+                bool keepTrait = false;
+                if (currentTrait != null)
+                {
+                    var def = GetTraitDefinitionFromInstance(currentTrait);
+                    var defs = GetSpeciesTraitDefinitionsForSpecies(targetSpecies.ToString());
+                    for (int i = 0; i < defs.Length; i++)
+                    {
+                        if (TraitDefinitionsEqual(def, defs[i]))
+                        {
+                            keepTrait = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!keepTrait)
+                {
+                    speciesField.SetValue(monster, null);
+                    Diag("NormalizeSpeciesTraitForSpecies -> cleared invalid species trait");
+                }
+
+                if (targetSpecies == FarmableSpecies.Chimera && speciesField.GetValue(monster) == null)
+                {
+                    var chimeraDefs = GetSpeciesTraitDefinitionsForSpecies("Chimera");
+                    if (chimeraDefs.Length > 0)
+                    {
+                        SetMonsterSpeciesTrait(monster, chimeraDefs[0], 1);
+                        Diag("NormalizeSpeciesTraitForSpecies -> applied default Chimera variant");
+                        return;
+                    }
+                }
+
+                SyncSpecialSpeciesTraitState(monster, GetTraitDefinitionFromInstance(speciesField.GetValue(monster)) as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("NormalizeSpeciesTraitForSpecies failed: " + e.Message);
+            }
+        }
+
+        private static void ReapplyDefaultStatLimitTraitsForSpecies(MonsterCharacterStats monster, FarmableSpecies targetSpecies)
+        {
+            try
+            {
+                if (monster == null) return;
+                var defs = GameManager.MonsterTraitLibrary.EnumerateDefaultStatLimitTraitsForSpecies(targetSpecies);
+                foreach (var def in defs)
+                {
+                    if (def != null) SetMonsterStatLimitTrait(monster, def, 1);
+                }
+                Diag("ReapplyDefaultStatLimitTraitsForSpecies -> " + targetSpecies);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("ReapplyDefaultStatLimitTraitsForSpecies failed: " + e.Message);
+            }
+        }
+
+        private static void ReinitializeMonsterDataAssets(MonsterCharacterStats monster)
+        {
+            try
+            {
+                var init = monster.GetType().GetMethod("InitializeDataAssets", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (init != null) init.Invoke(monster, null);
+                Diag("ReinitializeMonsterDataAssets done");
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("ReinitializeMonsterDataAssets failed: " + e.Message);
+            }
+        }
+
+        private static void ResetMonsterCombatStateAfterSpeciesSwap(MonsterCharacterStats monster)
+        {
+            try
+            {
+                var reset = monster.GetType().BaseType.GetMethod("ResetCombatStateData", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (reset != null) reset.Invoke(monster, null);
+                Diag("ResetMonsterCombatStateAfterSpeciesSwap done");
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("ResetMonsterCombatStateAfterSpeciesSwap failed: " + e.Message);
+            }
         }
 
         public static void SwapMonsterGender(TeamNimbus.CloudMeadow.Monsters.MonsterCharacterStats m)
@@ -1515,26 +2125,42 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 var traits = new System.Collections.Generic.List<object>();
-                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-                var t = monster.GetType();
-                var props = t.GetProperties(flags);
-                for (int i = 0; i < props.Length; i++)
+
+                var enumTraits = monster.GetType().GetMethod("EnumerateTraitInstances", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (enumTraits != null)
                 {
-                    var p = props[i];
-                    if (p.Name.IndexOf("trait", StringComparison.OrdinalIgnoreCase) >= 0)
+                    var en = enumTraits.Invoke(monster, null) as System.Collections.IEnumerable;
+                    if (en != null)
                     {
-                        object col = null; try { col = p.GetValue(monster, null); } catch { }
-                        AppendTraits(traits, col);
+                        foreach (var item in en) if (item != null) traits.Add(item);
                     }
                 }
-                var fields = t.GetFields(flags);
-                for (int i = 0; i < fields.Length; i++)
+
+                if (traits.Count == 0)
                 {
-                    var f = fields[i];
-                    if (f.Name.IndexOf("trait", StringComparison.OrdinalIgnoreCase) >= 0)
+                    var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                    var t = monster.GetType();
+                    var props = t.GetProperties(flags);
+                    for (int i = 0; i < props.Length; i++)
                     {
-                        object col = null; try { col = f.GetValue(monster); } catch { }
-                        AppendTraits(traits, col);
+                        var p = props[i];
+                        if (p.Name.IndexOf("trait", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            object col = null; try { col = p.GetValue(monster, null); } catch { }
+                            AppendTraits(traits, col);
+                            if (IsTraitInstanceLike(col)) traits.Add(col);
+                        }
+                    }
+                    var fields = t.GetFields(flags);
+                    for (int j = 0; j < fields.Length; j++)
+                    {
+                        var f = fields[j];
+                        if (f.Name.IndexOf("trait", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            object col2 = null; try { col2 = f.GetValue(monster); } catch { }
+                            AppendTraits(traits, col2);
+                            if (IsTraitInstanceLike(col2)) traits.Add(col2);
+                        }
                     }
                 }
                 // Deduplicate by reference and keep only instance-like entries
@@ -1557,6 +2183,41 @@ namespace CloudMeadow.CreativeMode
             if (col == null) return;
             var en = col as System.Collections.IEnumerable; if (en == null || col is string) return;
             foreach (var item in en) if (item != null) list.Add(item);
+        }
+
+        public static string GetTraitBucketForMonster(object monster, object traitInstance)
+        {
+            try
+            {
+                if (monster == null || traitInstance == null) return "Unknown";
+
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var t = monster.GetType();
+
+                var speciesField = t.GetField("_speciesTrait", flags);
+                if (speciesField != null)
+                {
+                    var speciesTrait = speciesField.GetValue(monster);
+                    if (speciesTrait != null && object.ReferenceEquals(speciesTrait, traitInstance)) return "Species";
+                }
+
+                string[] statFields = { "physiqueLimitTrait", "staminaLimitTrait", "intuitionLimitTrait", "swiftnessLimitTrait" };
+                for (int i = 0; i < statFields.Length; i++)
+                {
+                    var f = t.GetField(statFields[i], flags);
+                    if (f != null)
+                    {
+                        var v = f.GetValue(monster);
+                        if (v != null && object.ReferenceEquals(v, traitInstance)) return "StatLimit";
+                    }
+                }
+
+                var src = GetTraitSourceString(traitInstance);
+                if (src.IndexOf("universal", StringComparison.OrdinalIgnoreCase) >= 0) return "Universal";
+                return "Bloodline";
+            }
+            catch { }
+            return "Unknown";
         }
 
         public static object[] GetTraitDefinitionsForSpecies(string speciesName)
@@ -1859,7 +2520,7 @@ namespace CloudMeadow.CreativeMode
                         if (col == null || col is string) continue;
                         var add = col.GetType().GetMethod("Add");
                         if (add != null && add.GetParameters().Length == 1)
-                        { add.Invoke(col, new object[] { inst }); return true; }
+                        { add.Invoke(col, new object[] { inst }); Diag("TryAddToNamedCollection property: " + p.Name); return true; }
                     }
                 }
                 var fields = mType.GetFields(flags);
@@ -1876,7 +2537,7 @@ namespace CloudMeadow.CreativeMode
                         if (col == null || col is string) continue;
                         var add = col.GetType().GetMethod("Add");
                         if (add != null && add.GetParameters().Length == 1)
-                        { add.Invoke(col, new object[] { inst }); return true; }
+                        { add.Invoke(col, new object[] { inst }); Diag("TryAddToNamedCollection field: " + f.Name); return true; }
                     }
                 }
             }
@@ -2138,16 +2799,16 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
-                var mType = monster.GetType();
-                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
                 var traits = GetMonsterTraits(monster);
                 int count = 0;
                 for (int i = 0; i < traits.Length; i++)
                 {
                     var inst = traits[i];
-                    var src = GetTraitSourceString(inst);
-                    bool isUni = src.IndexOf("universal", StringComparison.OrdinalIgnoreCase) >= 0;
-                    if (isUni == universal) count++;
+                    var bucket = GetTraitBucketForMonster(monster, inst);
+                    bool isUni = string.Equals(bucket, "Universal", StringComparison.OrdinalIgnoreCase);
+                    bool isBloodline = string.Equals(bucket, "Bloodline", StringComparison.OrdinalIgnoreCase);
+                    if (universal && isUni) count++;
+                    if (!universal && isBloodline) count++;
                 }
                 return count;
             }
@@ -2285,6 +2946,7 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 if (monster == null) return;
+                Diag("RefreshMonsterAfterTrait for " + monster);
                 var t = monster.GetType();
                 string[] mnames = {
                     "RecalculateStats", "RefreshStats", "RefreshDerivedStats", "ApplyTraits", "RebuildTraitEffects",
@@ -2390,6 +3052,107 @@ namespace CloudMeadow.CreativeMode
             public int GetHashCode(object obj) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj); }
         }
 
+        private enum MonsterTraitKind
+        {
+            Unknown,
+            Species,
+            StatLimit,
+            Bloodline,
+            Universal
+        }
+
+        private static MonsterTraitKind ResolveMonsterTraitKind(object traitDefinition)
+        {
+            try
+            {
+                var def = UnwrapTraitDefinition(traitDefinition);
+                if (def == null) return MonsterTraitKind.Unknown;
+
+                var lib = GameManager.MonsterTraitLibrary;
+                if (lib != null)
+                {
+                    var isSpecies = lib.GetType().GetMethod("IsSpeciesTrait", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (isSpecies != null)
+                    {
+                        try
+                        {
+                            var result = isSpecies.Invoke(lib, new object[] { def });
+                            if (result is bool && (bool)result) return MonsterTraitKind.Species;
+                        }
+                        catch { }
+                    }
+                }
+
+                var statLimitType = Type.GetType("TeamNimbus.CloudMeadow.Traits.BaseStatLimitTraitDefinition, Game");
+                if (statLimitType != null && statLimitType.IsInstanceOfType(def)) return MonsterTraitKind.StatLimit;
+
+                var src = GetTraitSourceString(def);
+                if (src.IndexOf("universal", StringComparison.OrdinalIgnoreCase) >= 0) return MonsterTraitKind.Universal;
+                return MonsterTraitKind.Bloodline;
+            }
+            catch { }
+            return MonsterTraitKind.Unknown;
+        }
+
+        private static bool SetMonsterStatLimitTrait(object monster, object traitDefinition, int grade)
+        {
+            try
+            {
+                var def = UnwrapTraitDefinition(traitDefinition) as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition;
+                if (def == null || monster == null) return false;
+
+                object targetedStat = SafeProp(def, "TargetedStat");
+                if (targetedStat == null) return false;
+
+                string fieldName = null;
+                string statName = targetedStat.ToString();
+                if (string.Equals(statName, "Physique", StringComparison.OrdinalIgnoreCase)) fieldName = "physiqueLimitTrait";
+                else if (string.Equals(statName, "Stamina", StringComparison.OrdinalIgnoreCase)) fieldName = "staminaLimitTrait";
+                else if (string.Equals(statName, "Intuition", StringComparison.OrdinalIgnoreCase)) fieldName = "intuitionLimitTrait";
+                else if (string.Equals(statName, "Swiftness", StringComparison.OrdinalIgnoreCase)) fieldName = "swiftnessLimitTrait";
+                if (fieldName == null) return false;
+
+                var trait = new TeamNimbus.CloudMeadow.Traits.TraitInstance(def, Mathf.Clamp(grade, 1, 5));
+                var field = monster.GetType().GetField(fieldName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field == null) return false;
+
+                field.SetValue(monster, trait);
+                RefreshMonsterAfterTrait(monster);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("SetMonsterStatLimitTrait failed: " + e.Message);
+            }
+            return false;
+        }
+
+        private static bool ResetMonsterStatLimitTrait(object monster, object traitInstance)
+        {
+            try
+            {
+                var m = monster as MonsterCharacterStats;
+                if (m == null || traitInstance == null) return false;
+
+                var def = GetTraitDefinitionFromInstance(traitInstance);
+                var targetedStat = SafeProp(def, "TargetedStat");
+                if (targetedStat == null) return false;
+
+                foreach (var defaultDef in GameManager.MonsterTraitLibrary.EnumerateDefaultStatLimitTraitsForSpecies(m.FarmableSpecies))
+                {
+                    if (defaultDef != null && string.Equals(defaultDef.TargetedStat.ToString(), targetedStat.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return SetMonsterStatLimitTrait(monster, defaultDef, 1);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("ResetMonsterStatLimitTrait failed: " + e.Message);
+            }
+            return false;
+        }
+
         public static void AddTraitToMonster(object monster, object traitDefinition, int grade)
         {
             try
@@ -2397,9 +3160,20 @@ namespace CloudMeadow.CreativeMode
                 var instType = Type.GetType("TeamNimbus.CloudMeadow.Traits.TraitInstance, Game");
                 if (instType == null) { Plugin.Log.LogWarning("TraitInstance type not found"); return; }
 
-                // Determine trait source
-                var source = GetTraitSourceString(traitDefinition);
-                bool isUniversal = source.IndexOf("universal", StringComparison.OrdinalIgnoreCase) >= 0;
+                MonsterTraitKind kind = ResolveMonsterTraitKind(traitDefinition);
+                bool isUniversal = kind == MonsterTraitKind.Universal;
+
+                if (kind == MonsterTraitKind.Species)
+                {
+                    SetMonsterSpeciesTrait(monster, traitDefinition, grade);
+                    return;
+                }
+
+                if (kind == MonsterTraitKind.StatLimit)
+                {
+                    SetMonsterStatLimitTrait(monster, traitDefinition, grade);
+                    return;
+                }
 
                 // Capacity check
                 int cur = CountMonsterTraits(monster, isUniversal);
@@ -2410,7 +3184,7 @@ namespace CloudMeadow.CreativeMode
                 }
                 else
                 {
-                    // Bloodline: strictly allow max 4 total (per request)
+                    // Bloodline: game limit is 4 extra bloodline traits
                     int totalBloodline = CountMonsterTraits(monster, false);
                     if (totalBloodline >= 4) { Banner("Bloodline trait slots full"); return; }
                 }
@@ -2450,14 +3224,14 @@ namespace CloudMeadow.CreativeMode
                 try { SetTraitGrade(inst, grade); } catch { }
 
                 // Prefer adding into the correct collection by source
-                if (TryAddToNamedCollection(monster, inst, isUniversal)) return;
+                if (TryAddToNamedCollection(monster, inst, isUniversal)) { Diag("AddTraitToMonster path: named collection"); return; }
 
                 // Otherwise fallback to dedicated API
                 var mType = monster.GetType();
                 var addTraitInst = mType.GetMethod("AddTraitInstance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (addTraitInst != null && addTraitInst.GetParameters().Length == 1)
                 {
-                    try { addTraitInst.Invoke(monster, new object[] { inst }); return; } catch { }
+                    try { addTraitInst.Invoke(monster, new object[] { inst }); Diag("AddTraitToMonster path: AddTraitInstance"); return; } catch { }
                 }
                 var addTraitDef = mType.GetMethod("AddTrait", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (addTraitDef != null)
@@ -2465,13 +3239,14 @@ namespace CloudMeadow.CreativeMode
                     var ps = addTraitDef.GetParameters();
                     try
                     {
-                        if (ps.Length == 1) { addTraitDef.Invoke(monster, new object[] { def }); return; }
-                        if (ps.Length == 2) { addTraitDef.Invoke(monster, new object[] { def, grade }); return; }
+                        if (ps.Length == 1) { addTraitDef.Invoke(monster, new object[] { def }); Diag("AddTraitToMonster path: AddTrait(def)"); return; }
+                        if (ps.Length == 2) { addTraitDef.Invoke(monster, new object[] { def, grade }); Diag("AddTraitToMonster path: AddTrait(def, grade)"); return; }
                     }
                     catch { }
                 }
 
                 // As last resort: add to any trait collection
+                Diag("AddTraitToMonster path: any trait collection");
                 TryAddToAnyCollection(monster, inst);
             }
             catch (Exception e) { Plugin.Log.LogWarning("AddTraitToMonster failed: " + e.Message); }
@@ -2483,20 +3258,46 @@ namespace CloudMeadow.CreativeMode
             {
                 var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
                 var t = monster.GetType();
+                var bucket = GetTraitBucketForMonster(monster, traitInstance);
+
+                if (string.Equals(bucket, "Species", StringComparison.OrdinalIgnoreCase))
+                {
+                    var speciesField = t.GetField("_speciesTrait", flags);
+                    if (speciesField != null)
+                    {
+                        Diag("RemoveTraitFromMonster path: species field");
+                        speciesField.SetValue(monster, null);
+                        SyncSpecialSpeciesTraitState(monster, null);
+                        RefreshMonsterAfterTrait(monster);
+                        return;
+                    }
+                }
+
+                if (string.Equals(bucket, "StatLimit", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ResetMonsterStatLimitTrait(monster, traitInstance))
+                    {
+                        Diag("RemoveTraitFromMonster path: stat limit reset");
+                        Banner("Stat limit reset");
+                        return;
+                    }
+                    Banner("Stat limit reset failed");
+                    return;
+                }
 
                 // Pre-pass: if Universal trait, remove directly from universalTraits field for reliability
                 var defInitial = GetTraitDefinitionFromInstance(traitInstance);
                 var src = GetTraitSourceString(defInitial);
                 if (src.IndexOf("universal", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    if (TryRemoveFromListField(monster, "universalTraits", traitInstance, defInitial)) { RefreshMonsterAfterTrait(monster); return; }
+                    if (TryRemoveFromListField(monster, "universalTraits", traitInstance, defInitial)) { Diag("RemoveTraitFromMonster path: universalTraits field"); RefreshMonsterAfterTrait(monster); return; }
                 }
 
                 // 1) Try dedicated API on monster
                 var rmInst = t.GetMethod("RemoveTraitInstance", flags);
                 if (rmInst != null && rmInst.GetParameters().Length == 1)
                 {
-                    try { rmInst.Invoke(monster, new object[] { traitInstance }); RefreshMonsterAfterTrait(monster); return; } catch { }
+                    try { rmInst.Invoke(monster, new object[] { traitInstance }); Diag("RemoveTraitFromMonster path: RemoveTraitInstance"); RefreshMonsterAfterTrait(monster); return; } catch { }
                 }
                 var rmDef = t.GetMethod("RemoveTrait", flags);
                 if (rmDef != null)
@@ -2505,8 +3306,8 @@ namespace CloudMeadow.CreativeMode
                     var ps = rmDef.GetParameters();
                     try
                     {
-                        if (ps.Length == 1) { rmDef.Invoke(monster, new object[] { def }); RefreshMonsterAfterTrait(monster); return; }
-                        if (ps.Length == 2) { rmDef.Invoke(monster, new object[] { def, 0 }); RefreshMonsterAfterTrait(monster); return; }
+                        if (ps.Length == 1) { rmDef.Invoke(monster, new object[] { def }); Diag("RemoveTraitFromMonster path: RemoveTrait(def)"); RefreshMonsterAfterTrait(monster); return; }
+                        if (ps.Length == 2) { rmDef.Invoke(monster, new object[] { def, 0 }); Diag("RemoveTraitFromMonster path: RemoveTrait(def,0)"); RefreshMonsterAfterTrait(monster); return; }
                     }
                     catch { }
                 }
@@ -2598,6 +3399,7 @@ namespace CloudMeadow.CreativeMode
                     if (rem != null)
                     {
                         rem.Invoke(list, new object[] { toRemove });
+                        Diag("TryRemoveFromListField success: " + fieldName);
                         return true;
                     }
                 }
@@ -2631,6 +3433,98 @@ namespace CloudMeadow.CreativeMode
                 Banner("Max Loyalty for " + cnt + " monsters");
             }
             catch (Exception e) { Plugin.Log.LogWarning("MaxAllMonstersLoyalty failed: " + e.Message); }
+        }
+
+        public static void RunSafeConsistencyAuditAndFix()
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx");
+                dir = System.IO.Path.Combine(dir, "plugins");
+                dir = System.IO.Path.Combine(dir, "CloudMeadowCreativeMode");
+                System.IO.Directory.CreateDirectory(dir);
+                var path = System.IO.Path.Combine(dir, "consistency_report.txt");
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== Safe Consistency Audit ===");
+                sb.AppendLine(DateTime.Now.ToString("u"));
+
+                int issues = 0;
+                int fixes = 0;
+                var monsters = GameManager.Status != null ? GameManager.Status.EnumerateActiveMonsters() : null;
+                if (monsters != null)
+                {
+                    foreach (var monster in monsters)
+                    {
+                        if (monster == null) continue;
+                        int speciesCount = 0;
+                        int statCount = 0;
+                        int bloodCount = 0;
+                        int uniCount = 0;
+                        var traits = GetMonsterTraits(monster);
+                        for (int i = 0; i < traits.Length; i++)
+                        {
+                            var bucket = GetTraitBucketForMonster(monster, traits[i]);
+                            if (string.Equals(bucket, "Species", StringComparison.OrdinalIgnoreCase)) speciesCount++;
+                            else if (string.Equals(bucket, "StatLimit", StringComparison.OrdinalIgnoreCase)) statCount++;
+                            else if (string.Equals(bucket, "Universal", StringComparison.OrdinalIgnoreCase)) uniCount++;
+                            else if (string.Equals(bucket, "Bloodline", StringComparison.OrdinalIgnoreCase)) bloodCount++;
+                        }
+
+                        sb.AppendLine(string.Format("{0} ({1}) -> species:{2} stat:{3} blood:{4} uni:{5}", monster.Name, monster.FarmableSpecies, speciesCount, statCount, bloodCount, uniCount));
+
+                        if (monster.FarmableSpecies == FarmableSpecies.Chimera && speciesCount == 0)
+                        {
+                            var chimeraDefs = GetSpeciesTraitDefinitionsForSpecies("Chimera");
+                            if (chimeraDefs.Length > 0 && SetMonsterSpeciesTrait(monster, chimeraDefs[0], 1))
+                            {
+                                fixes++;
+                                issues++;
+                                sb.AppendLine("  FIX: restored missing Chimera variant -> " + ReadStringFromTraitDefinition(chimeraDefs[0]));
+                            }
+                        }
+
+                        if (statCount != 4)
+                        {
+                            issues++;
+                            sb.AppendLine("  ISSUE: invalid stat-limit count");
+                            foreach (var defaultDef in GameManager.MonsterTraitLibrary.EnumerateDefaultStatLimitTraitsForSpecies(monster.FarmableSpecies))
+                            {
+                                if (defaultDef != null) SetMonsterStatLimitTrait(monster, defaultDef, 1);
+                            }
+                            fixes++;
+                            sb.AppendLine("  FIX: reapplied default stat-limit traits");
+                        }
+
+                        if (bloodCount > 4) sb.AppendLine("  WARN: bloodline count above limit");
+                        if (uniCount > 10) sb.AppendLine("  WARN: universal count above limit");
+                    }
+                }
+
+                var entries = GetInventoryEntries();
+                sb.AppendLine("Inventory entries: " + entries.Length);
+                for (int j = 0; j < entries.Length; j++)
+                {
+                    var entry = entries[j];
+                    var def = GetEntryDefinition(entry) as BaseItemDefinition;
+                    if (def == null) continue;
+                    var q = GetEntryQuality(entry);
+                    if (!def.ItemAvailableWithQuality(q))
+                    {
+                        issues++;
+                        if (UpgradeEntryToMaxQuality(entry, false))
+                        {
+                            fixes++;
+                            sb.AppendLine("  FIX ITEM: " + (SafeProp(def, "Code") ?? SafeProp(def, "Name") ?? def.ToString()) + " quality normalized");
+                        }
+                    }
+                }
+
+                sb.AppendLine(string.Format("Summary -> issues:{0} fixes:{1}", issues, fixes));
+                System.IO.File.WriteAllText(path, sb.ToString());
+                Banner("Audit complete. Fixed: " + fixes);
+                LogBuffer.Add("Consistency audit written: " + path);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("RunSafeConsistencyAuditAndFix failed: " + e.Message); }
         }
 
         // Cheats: Set Extra Harvest Times charges to a fixed value for all monsters
@@ -2804,6 +3698,17 @@ namespace CloudMeadow.CreativeMode
         private static void Banner(string msg)
         {
             try { TeamNimbus.CloudMeadow.Utilities.BannerMessage.ShowMessage(msg, 1.2f, null); } catch { }
+        }
+
+        private static void Diag(string msg)
+        {
+            try
+            {
+                if (!VerboseDiagnosticsEnabled) return;
+                Plugin.Log.LogInfo("[CM-DIAG] " + msg);
+                LogBuffer.Add("[DIAG] " + msg);
+            }
+            catch { }
         }
 
         public static string BuildQuickStatus()

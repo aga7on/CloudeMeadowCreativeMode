@@ -15,12 +15,13 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Refresh", GUILayout.Width(80))) { }
+                if (GUILayout.Button("Refresh", GUILayout.Width(80))) { _allItemDefs = null; }
                 GUILayout.Label("Filter:", GUILayout.Width(50));
                 _addItemFilter = GUILayout.TextField(_addItemFilter ?? "", GUILayout.Width(200));
                 if (GUILayout.Button("Apply", GUILayout.Width(70))) { /* filter is reactive */ }
                 if (GUILayout.Button("Add Item", GUILayout.Width(100))) { _showAddItem = true; if (_allItemDefs == null) _allItemDefs = GameApi.GetAllItemDefinitions(); }
                 if (GUILayout.Button("Get All Items", GUILayout.Width(140))) { GameApi.AddAllItems(1, 1); }
+                if (GUILayout.Button("MAX ALL QUALITY", GUILayout.Width(150))) { GameApi.SetAllInventoryEntriesMaxQuality(); }
                 GUILayout.EndHorizontal();
 
                 var entries = GameApi.GetInventoryEntries();

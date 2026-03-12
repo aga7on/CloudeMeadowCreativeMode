@@ -25,60 +25,60 @@
 
   <ItemGroup>
     <Reference Include="mscorlib">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\mscorlib.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\mscorlib.dll</HintPath>
       <Private>false</Private>
       <SpecificVersion>false</SpecificVersion>
     </Reference>
     <Reference Include="System">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\System.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\System.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="System.Core">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\System.Core.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\System.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="System.Xml">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\System.Xml.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\System.Xml.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\UnityEngine.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
-      <HintPath>..\..\..\Cloud Meadow_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
+      <HintPath>..\Cloud Meadow_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Game">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\Game.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\Game.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Common">
-      <HintPath>..\\..\\..\\Cloud Meadow_Data\\Managed\\Common.dll</HintPath>
+      <HintPath>..\\Cloud Meadow_Data\\Managed\\Common.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>..\\..\\core\\BepInEx.dll</HintPath>
+      <HintPath>..\\BepInEx\\core\\BepInEx.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="BepInEx.Harmony">
-      <HintPath>..\\..\\core\\BepInEx.Harmony.dll</HintPath>
+      <HintPath>..\\BepInEx\\core\\BepInEx.Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>..\\..\\core\\0Harmony.dll</HintPath>
+      <HintPath>..\\BepInEx\\core\\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
