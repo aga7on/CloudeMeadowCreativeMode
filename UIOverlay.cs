@@ -9,7 +9,7 @@ namespace CloudMeadow.CreativeMode
     {
         // Core state
         private bool _visible;
-        private Rect _windowRect = new Rect(50, 50, 1000, 700);
+        private Rect _windowRect = new Rect(50, 50, 1160, 720);
         private Vector2 _scroll;
         private Vector2 _logScroll;
         private bool _logCollapsed = false;

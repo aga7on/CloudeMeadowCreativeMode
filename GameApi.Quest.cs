@@ -7,10 +7,35 @@ namespace CloudMeadow.CreativeMode
     internal static class GameApiQuest
     {
         public static TeamNimbus.CloudMeadow.Persistence.GameStatus GS { get { return TeamNimbus.CloudMeadow.Managers.GameManager.Status; } }
+        private static QuestInfo[] _cachedAllQuests = new QuestInfo[0];
+        private static System.Collections.Generic.List<QuestData> _cachedActiveQuestLog = new System.Collections.Generic.List<QuestData>();
+        private static long _cachedAllQuestsAtTicks;
+        private static long _cachedActiveQuestAtTicks;
+        private static bool _allQuestsDirty = true;
+        private static bool _activeQuestDirty = true;
+        private const long QuestCacheTtlTicks = TimeSpan.TicksPerSecond * 2;
+
+        public static void MarkQuestCacheDirty()
+        {
+            _allQuestsDirty = true;
+            _activeQuestDirty = true;
+        }
 
         public static System.Collections.Generic.List<QuestData> GetActiveQuestLog()
         {
-            try { return GS.QuestsDataLog; } catch { return new System.Collections.Generic.List<QuestData>(); }
+            try
+            {
+                long now = DateTime.UtcNow.Ticks;
+                if (_activeQuestDirty || (now - _cachedActiveQuestAtTicks) > QuestCacheTtlTicks)
+                {
+                    var src = GS.QuestsDataLog;
+                    _cachedActiveQuestLog = src != null ? new System.Collections.Generic.List<QuestData>(src) : new System.Collections.Generic.List<QuestData>();
+                    _cachedActiveQuestAtTicks = now;
+                    _activeQuestDirty = false;
+                }
+                return new System.Collections.Generic.List<QuestData>(_cachedActiveQuestLog);
+            }
+            catch { return new System.Collections.Generic.List<QuestData>(); }
         }
 
         public static string[] DebugDumpActiveQuestLog()
@@ -66,6 +91,9 @@ namespace CloudMeadow.CreativeMode
 
             try
             {
+                long now = DateTime.UtcNow.Ticks;
+                if (!_allQuestsDirty && (now - _cachedAllQuestsAtTicks) <= QuestCacheTtlTicks) return _cachedAllQuests;
+
                 var qm = QM; if (qm == null) return new QuestInfo[0];
                 var list = new System.Collections.Generic.List<QuestInfo>();
                 var t = typeof(QuestManager);
@@ -103,7 +131,11 @@ namespace CloudMeadow.CreativeMode
                 // De-dup by QuestID
                 var uniq = new System.Collections.Generic.Dictionary<string, QuestInfo>();
                 for (int i = 0; i < list.Count; i++) { var qi = list[i]; if (qi == null) continue; var key = qi.QuestID.ToString(); if (!uniq.ContainsKey(key)) uniq[key] = qi; }
-                var arr = new QuestInfo[uniq.Values.Count]; uniq.Values.CopyTo(arr, 0); return arr;
+                var arr = new QuestInfo[uniq.Values.Count]; uniq.Values.CopyTo(arr, 0);
+                _cachedAllQuests = arr;
+                _cachedAllQuestsAtTicks = now;
+                _allQuestsDirty = false;
+                return arr;
             }
             catch { return new QuestInfo[0]; }
         }
@@ -164,6 +196,7 @@ namespace CloudMeadow.CreativeMode
                     qm.StartQuestStep(targetStep, quest, skipSteps: false, grantRewardsForSkippedSteps: true);
                 }
                 LogBuffer.Add("Safe Jump: Reached step '" + targetStep.Description + "'");
+                MarkQuestCacheDirty();
             }
             catch (Exception e) { Plugin.Log.LogWarning("SafeJumpTo failed: " + e.Message); }
         }
@@ -212,6 +245,7 @@ namespace CloudMeadow.CreativeMode
                     TryComplete(qm, quest, step);
                     LogBuffer.Add("Step forced complete: " + step.Description);
                 }
+                MarkQuestCacheDirty();
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetQuestStage failed: " + e.Message); }
         }

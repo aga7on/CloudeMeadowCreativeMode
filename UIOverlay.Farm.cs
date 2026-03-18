@@ -21,7 +21,24 @@ namespace CloudMeadow.CreativeMode
         private System.Collections.Generic.Dictionary<object, Vector2> _addTraitScroll = new System.Collections.Generic.Dictionary<object, Vector2>();
         private System.Collections.Generic.Dictionary<object, bool> _addTraitDropdownOpen = new System.Collections.Generic.Dictionary<object, bool>();
         private System.Collections.Generic.Dictionary<object, int> _addTraitSelectedIndex = new System.Collections.Generic.Dictionary<object, int>();
+        private System.Collections.Generic.Dictionary<object, string> _addTraitCategoryTab = new System.Collections.Generic.Dictionary<object, string>();
+        private System.Collections.Generic.Dictionary<object, string> _addTraitSourceFilter = new System.Collections.Generic.Dictionary<object, string>();
         private object[] _allTraitDefsCache;
+        private bool _farmMonstersCacheDirty = true;
+        private float _farmMonstersCacheAt = -999f;
+        private const float FarmMonstersCacheSeconds = 0.5f;
+        private System.Collections.Generic.List<MonsterRowCache> _farmMonstersCache = new System.Collections.Generic.List<MonsterRowCache>();
+        private System.Collections.Generic.Dictionary<object, object[]> _monsterTraitsSnapshotCache = new System.Collections.Generic.Dictionary<object, object[]>();
+        private System.Collections.Generic.Dictionary<object, float> _monsterTraitsSnapshotAt = new System.Collections.Generic.Dictionary<object, float>();
+        private const float MonsterTraitsCacheSeconds = 0.75f;
+
+        private class MonsterRowCache
+        {
+            public object Monster;
+            public string Name;
+            public string Species;
+            public string Pigment;
+        }
 
         // Performance: cache Add Trait popup data per-monster while popup is open
         private System.Collections.Generic.Dictionary<object, System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<object>>> _cacheBloodlineBySpecies = new System.Collections.Generic.Dictionary<object, System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<object>>>();
@@ -31,6 +48,9 @@ namespace CloudMeadow.CreativeMode
         private System.Collections.Generic.Dictionary<string, object[]> _cacheStatLimitTraitDefsStatic = new System.Collections.Generic.Dictionary<string, object[]>(System.StringComparer.OrdinalIgnoreCase);
         private System.Collections.Generic.Dictionary<string, object[]> _cacheBloodlineTraitDefsStatic = new System.Collections.Generic.Dictionary<string, object[]>(System.StringComparer.OrdinalIgnoreCase);
         private object[] _cacheUniversalTraitDefsStatic;
+        private object[] _cacheAllSpeciesTraitDefsStatic;
+        private object[] _cacheAllStatLimitTraitDefsStatic;
+        private object[] _cacheAllBloodlineTraitDefsStatic;
 
         private void DrawFarmUI()
         {
@@ -97,27 +117,26 @@ namespace CloudMeadow.CreativeMode
 
                 GUILayout.Space(5);
                 GUILayout.Label("Monsters");
-                var mons = GameApi.GetActiveMonsters();
-                for (int i = 0; i < mons.Length; i++)
+                EnsureFarmMonstersCache();
+                for (int i = 0; i < _farmMonstersCache.Count; i++)
                 {
-                    var m = mons[i]; if (m == null) continue;
+                    var row = _farmMonstersCache[i];
+                    var m = row != null ? row.Monster as TeamNimbus.CloudMeadow.Monsters.MonsterCharacterStats : null; if (m == null) continue;
                     GUILayout.BeginVertical(GUI.skin.box);
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label((i + 1) + ". " + m.Name, GUILayout.Width(200));
-                    var species = GameApi.GetMonsterSpecies(m);
-                    GUILayout.Label("Type: " + species, GUILayout.Width(160));
-                    if (GUILayout.Button("Change", GUILayout.Width(70))) { _monsterTypeWindow[m] = true; _monsterSelectedSpecies[m] = species; }
-                    if (string.Equals(species, "Chimera", System.StringComparison.OrdinalIgnoreCase))
+                    GUILayout.Label((i + 1) + ". " + row.Name, GUILayout.Width(200));
+                    GUILayout.Label("Type: " + row.Species, GUILayout.Width(160));
+                    if (GUILayout.Button("Change", GUILayout.Width(70))) { _monsterTypeWindow[m] = true; _monsterSelectedSpecies[m] = row.Species; }
+                    if (string.Equals(row.Species, "Chimera", System.StringComparison.OrdinalIgnoreCase))
                     {
                         if (GUILayout.Button("Variant", GUILayout.Width(70))) { _monsterChimeraWindow[m] = !_monsterChimeraWindow.ContainsKey(m) || !_monsterChimeraWindow[m]; }
                     }
                     GUILayout.Label("Gender:", GUILayout.Width(60));
                     if (GUILayout.Button("Swap", GUILayout.Width(60))) GameApi.SwapMonsterGender(m);
-                    if (GUILayout.Button("Delete", GUILayout.Width(70))) { GameApi.RemoveMonster(m); GUILayout.EndHorizontal(); GUILayout.EndVertical(); continue; }
+                    if (GUILayout.Button("Delete", GUILayout.Width(70))) { GameApi.RemoveMonster(m); MarkFarmCacheDirty(); GUILayout.EndHorizontal(); GUILayout.EndVertical(); continue; }
                     if (GUILayout.Button("Traits", GUILayout.Width(70))) { _monsterTraitsWindow[m] = _monsterTraitsWindow.ContainsKey(m) && _monsterTraitsWindow[m] ? false : true; if (!_monsterTraitsWindow[m]) InvalidateMonsterTraitPopupCache(m); }
                     // Pigment UI
-                    string curPigment = GameApi.GetMonsterPigment(m);
-                    GUILayout.Label("Pigment: " + curPigment, GUILayout.Width(180));
+                    GUILayout.Label("Pigment: " + row.Pigment, GUILayout.Width(180));
                     if (GUILayout.Button("Change", GUILayout.Width(70))) { _monsterPatternWindow[m] = true; }
                     GUILayout.EndHorizontal();
 
@@ -221,7 +240,7 @@ namespace CloudMeadow.CreativeMode
                     string name = pigments[i];
                     GUILayout.BeginHorizontal(GUI.skin.box);
                     GUILayout.Label(name, GUILayout.Width(220));
-                    if (GUILayout.Button("Select", GUILayout.Width(60))) { GameApi.SetMonsterPigment(monster, name); _monsterPatternWindow[monster] = false; }
+                    if (GUILayout.Button("Select", GUILayout.Width(60))) { GameApi.SetMonsterPigment(monster, name); _monsterPatternWindow[monster] = false; MarkFarmCacheDirty(); }
                     GUILayout.EndHorizontal();
                 }
             }
@@ -249,7 +268,7 @@ namespace CloudMeadow.CreativeMode
                 if (string.Equals(s, "Chimera", System.StringComparison.OrdinalIgnoreCase)) continue; // hide Chimera
                 GUILayout.BeginHorizontal(GUI.skin.box);
                 GUILayout.Label((s == cur ? "* " : "") + s, GUILayout.Width(220));
-                if (GUILayout.Button("Select", GUILayout.Width(60))) { GameApi.SetMonsterSpecies(monster, s); InvalidateMonsterTraitPopupCache(monster); _monsterTypeWindow[monster] = false; }
+                if (GUILayout.Button("Select", GUILayout.Width(60))) { GameApi.SetMonsterSpecies(monster, s); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); _monsterTypeWindow[monster] = false; }
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndVertical();
@@ -277,6 +296,7 @@ namespace CloudMeadow.CreativeMode
                     if (GameApi.SetChimeraVariant(monster, name, 1))
                     {
                         InvalidateMonsterTraitPopupCache(monster);
+                        MarkFarmCacheDirty();
                         _monsterChimeraWindow[monster] = false;
                     }
                 }
@@ -295,7 +315,7 @@ namespace CloudMeadow.CreativeMode
             if (GUILayout.Button("Close", GUILayout.Width(60))) { _monsterTraitsWindow[monster] = false; InvalidateMonsterTraitPopupCache(monster); GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }
             GUILayout.EndHorizontal();
 
-            var traits = GameApi.GetMonsterTraits(monster);
+            var traits = GetCachedMonsterTraits(monster);
             var species = new System.Collections.Generic.List<object>();
             var statLimits = new System.Collections.Generic.List<object>();
             var blood = new System.Collections.Generic.List<object>();
@@ -337,23 +357,27 @@ namespace CloudMeadow.CreativeMode
                 string name = ReadString(tr, new string[] { "Name", "DisplayName", "TraitName", "TraitCode", "Code" });
                 int lvl = ReadInt(tr, new string[] { "Grade", "Level", "CurrentLevel" });
                 int max = GameApi.GetTraitMaxGrade(tr);
+                string badge = GameApi.GetTraitBadgeForUI(tr);
+                string displayName = (i + 1) + ". " + name;
+                if (!string.IsNullOrEmpty(badge)) displayName += " [" + badge + "]";
+                displayName += " Lvl:" + lvl + (max > 0 ? "/" + max : "");
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label((i + 1) + ". " + name + " Lvl:" + lvl + (max > 0 ? "/" + max : ""), GUILayout.Width(320));
+                GUILayout.Label(displayName, GUILayout.Width(400));
                 if (allowDelete)
                 {
-                    if (GUILayout.Button("Del", GUILayout.Width(40))) { GameApi.RemoveTraitFromMonster(monster, tr); InvalidateMonsterTraitPopupCache(monster); GUILayout.EndHorizontal(); continue; }
+                    if (GUILayout.Button("Del", GUILayout.Width(40))) { GameApi.RemoveTraitFromMonster(monster, tr); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); GUILayout.EndHorizontal(); continue; }
                 }
                 else
                 {
                     GUILayout.Label("", GUILayout.Width(40));
                 }
-                if (GUILayout.Button("Max", GUILayout.Width(50))) GameApi.MaxTraitGrade(tr);
+                if (GUILayout.Button("Max", GUILayout.Width(50))) { GameApi.MaxTraitGrade(tr); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); }
                 GUILayout.Label("Set lvl", GUILayout.Width(50));
                 string edit;
                 if (!_traitLevelEdits.TryGetValue(tr, out edit)) edit = lvl.ToString();
                 edit = GUILayout.TextField(edit, GUILayout.Width(40));
                 _traitLevelEdits[tr] = edit;
-                if (GUILayout.Button("Set", GUILayout.Width(40))) { int nv; if (int.TryParse(edit, out nv)) GameApi.SetTraitGrade(tr, nv); }
+                if (GUILayout.Button("Set", GUILayout.Width(40))) { int nv; if (int.TryParse(edit, out nv)) { GameApi.SetTraitGrade(tr, nv); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); } }
                 GUILayout.EndHorizontal();
             }
         }
@@ -371,6 +395,8 @@ namespace CloudMeadow.CreativeMode
             _traitLevelEdits[monster] = _traitLevelEdits.ContainsKey(monster) ? _traitLevelEdits[monster] : "1";
             if (!_addTraitScroll.ContainsKey(monster)) _addTraitScroll[monster] = Vector2.zero;
             if (!_addTraitFilter.ContainsKey(monster)) _addTraitFilter[monster] = "";
+            if (!_addTraitCategoryTab.ContainsKey(monster)) _addTraitCategoryTab[monster] = "All";
+            if (!_addTraitSourceFilter.ContainsKey(monster)) _addTraitSourceFilter[monster] = "All";
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Filter:", GUILayout.Width(50));
@@ -385,22 +411,37 @@ namespace CloudMeadow.CreativeMode
             if (GUILayout.Button("Set 5", GUILayout.Width(50))) _traitLevelEdits[monster] = "5";
             GUILayout.EndHorizontal();
 
+            DrawAddTraitCategoryBar(monster);
+
             _addTraitScroll[monster] = GUILayout.BeginScrollView(_addTraitScroll[monster], GUILayout.Height(480));
 
-            string speciesName = GameApi.GetMonsterSpecies(monster);
-            var speciesDefs = GetCachedSpeciesTraitDefs(speciesName);
-            var statLimitDefs = GetCachedStatLimitTraitDefs(speciesName);
-            var bloodlineDefs = GetCachedBloodlineTraitDefs(speciesName);
+            var speciesDefs = GetCachedAllSpeciesTraitDefs();
+            var statLimitDefs = GetCachedAllStatLimitTraitDefs();
+            var bloodlineDefs = GetCachedAllBloodlineTraitDefs();
             var universalDefs = GetCachedUniversalTraitDefs();
             var ownedCodes = GetOwnedTraitCodeCache(monster);
+            string selectedTab = _addTraitCategoryTab[monster];
+            string sourceFilter = _addTraitSourceFilter[monster];
 
-            DrawAddableTraitSection(monster, "Species", speciesDefs, filter, true, ownedCodes);
-            GUILayout.Space(8);
-            DrawAddableTraitSection(monster, "Stat Limits", statLimitDefs, filter, true, ownedCodes);
-            GUILayout.Space(8);
-            DrawAddableTraitSection(monster, "Bloodlines", bloodlineDefs, filter, false, ownedCodes);
-            GUILayout.Space(8);
-            DrawAddableTraitSection(monster, "Universal", universalDefs, filter, false, ownedCodes);
+            if (string.Equals(selectedTab, "All", System.StringComparison.OrdinalIgnoreCase) || string.Equals(selectedTab, "Species", System.StringComparison.OrdinalIgnoreCase))
+            {
+                DrawAddableTraitSection(monster, "Species", speciesDefs, filter, sourceFilter, true, ownedCodes);
+                GUILayout.Space(8);
+            }
+            if (string.Equals(selectedTab, "All", System.StringComparison.OrdinalIgnoreCase) || string.Equals(selectedTab, "Stat Limits", System.StringComparison.OrdinalIgnoreCase))
+            {
+                DrawAddableTraitSection(monster, "Stat Limits", statLimitDefs, filter, sourceFilter, true, ownedCodes);
+                GUILayout.Space(8);
+            }
+            if (string.Equals(selectedTab, "All", System.StringComparison.OrdinalIgnoreCase) || string.Equals(selectedTab, "Bloodlines", System.StringComparison.OrdinalIgnoreCase))
+            {
+                DrawAddableTraitSection(monster, "Bloodlines", bloodlineDefs, filter, sourceFilter, false, ownedCodes);
+                GUILayout.Space(8);
+            }
+            if (string.Equals(selectedTab, "All", System.StringComparison.OrdinalIgnoreCase) || string.Equals(selectedTab, "Universal", System.StringComparison.OrdinalIgnoreCase))
+            {
+                DrawAddableTraitSection(monster, "Universal", universalDefs, filter, sourceFilter, false, ownedCodes);
+            }
 
             GUILayout.EndScrollView();
 
@@ -419,7 +460,7 @@ namespace CloudMeadow.CreativeMode
             GUILayout.EndVertical();
         }
 
-        private void DrawAddableTraitSection(object monster, string title, object[] defs, string filter, bool replaceMode, System.Collections.Generic.HashSet<string> ownedCodes)
+        private void DrawAddableTraitSection(object monster, string title, object[] defs, string filter, string sourceFilter, bool replaceMode, System.Collections.Generic.HashSet<string> ownedCodes)
         {
             GUILayout.Label(title, GUI.skin.label);
             if (defs == null || defs.Length == 0)
@@ -432,17 +473,28 @@ namespace CloudMeadow.CreativeMode
             {
                 var d = defs[i]; if (d == null) continue;
                 var name = ReadString(d, new string[] { "Name", "DisplayName", "Code" });
-                if (!string.IsNullOrEmpty(filter) && name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                var badge = GameApi.GetTraitBadgeForUI(d);
+                var src = GameApi.GetTraitSourceForUI(d);
+                string displayName = name;
+                if (!string.IsNullOrEmpty(badge)) displayName += " [" + badge + "]";
+                if (!string.IsNullOrEmpty(src)) displayName += " [" + src + "]";
+                if (!string.IsNullOrEmpty(filter) && displayName.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                if (!string.Equals(sourceFilter, "All", System.StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(src, sourceFilter, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
 
                 bool owned = ownedCodes != null && ownedCodes.Contains(GetTraitCacheKey(d));
                 GUILayout.BeginHorizontal(GUI.skin.box);
-                GUILayout.Label(name + (owned ? " (current)" : ""), GUILayout.Width(740));
+                GUILayout.Label(displayName + (owned ? " (current)" : ""), GUILayout.Width(860));
                 GUI.enabled = !owned;
                 if (GUILayout.Button(replaceMode ? "Set" : "Add", GUILayout.Width(80)))
                 {
                     int g = 1; int.TryParse(_traitLevelEdits[monster], out g); if (g < 1) g = 1; if (g > 5) g = 5;
                     GameApi.TryAddTraitToMonster(monster, d, g);
                     InvalidateMonsterTraitPopupCache(monster);
+                    MarkFarmCacheDirty();
                     _monsterAddTraitWindow[monster] = false;
                 }
                 GUI.enabled = true;
@@ -454,20 +506,147 @@ namespace CloudMeadow.CreativeMode
         {
             try
             {
-                string speciesName = GameApi.GetMonsterSpecies(monster);
-                GetCachedSpeciesTraitDefs(speciesName);
-                GetCachedStatLimitTraitDefs(speciesName);
-                GetCachedBloodlineTraitDefs(speciesName);
-                GetCachedUniversalTraitDefs();
-                _cacheOwnedTraitCodes[monster] = BuildOwnedTraitCodeCache(monster);
-            }
-            catch { }
+            GetCachedAllSpeciesTraitDefs();
+            GetCachedAllStatLimitTraitDefs();
+            GetCachedAllBloodlineTraitDefs();
+            GetCachedUniversalTraitDefs();
+            _cacheOwnedTraitCodes[monster] = BuildOwnedTraitCodeCache(monster);
+            GetCachedMonsterTraits(monster);
+            _addTraitCategoryTab[monster] = _addTraitCategoryTab.ContainsKey(monster) ? _addTraitCategoryTab[monster] : "All";
+            _addTraitSourceFilter[monster] = _addTraitSourceFilter.ContainsKey(monster) ? _addTraitSourceFilter[monster] : "All";
         }
+        catch { }
+    }
 
         private void InvalidateMonsterTraitPopupCache(object monster)
         {
             if (monster == null) return;
             _cacheOwnedTraitCodes.Remove(monster);
+            _monsterTraitsSnapshotCache.Remove(monster);
+            _monsterTraitsSnapshotAt.Remove(monster);
+            _addTraitCategoryTab.Remove(monster);
+            _addTraitSourceFilter.Remove(monster);
+        }
+
+        private void DrawAddTraitCategoryBar(object monster)
+        {
+            try
+            {
+                string[] tabs = { "All", "Species", "Stat Limits", "Bloodlines", "Universal" };
+                if (!_addTraitCategoryTab.ContainsKey(monster)) _addTraitCategoryTab[monster] = "All";
+                if (!_addTraitSourceFilter.ContainsKey(monster)) _addTraitSourceFilter[monster] = "All";
+
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label("Category:", GUILayout.Width(70));
+                for (int i = 0; i < tabs.Length; i++)
+                {
+                    string tab = tabs[i];
+                    bool active = string.Equals(_addTraitCategoryTab[monster], tab, System.StringComparison.OrdinalIgnoreCase);
+                    bool newActive = GUILayout.Toggle(active, tab, GUI.skin.button, GUILayout.Width(95));
+                    if (newActive && !active) _addTraitCategoryTab[monster] = tab;
+                }
+                GUILayout.EndHorizontal();
+
+                string[] sources = BuildTraitSourceButtonsForPopup();
+                if (sources != null && sources.Length > 0)
+                {
+                    GUILayout.BeginHorizontal(GUI.skin.box);
+                    GUILayout.Label("Source:", GUILayout.Width(70));
+                    for (int j = 0; j < sources.Length; j++)
+                    {
+                        string src = sources[j];
+                        bool active2 = string.Equals(_addTraitSourceFilter[monster], src, System.StringComparison.OrdinalIgnoreCase);
+                        bool newActive2 = GUILayout.Toggle(active2, src, GUI.skin.button, GUILayout.Width(90));
+                        if (newActive2 && !active2) _addTraitSourceFilter[monster] = src;
+                    }
+                    if (GUILayout.Button("Reset", GUILayout.Width(60))) _addTraitSourceFilter[monster] = "All";
+                    GUILayout.EndHorizontal();
+                }
+            }
+            catch { }
+        }
+
+        private string[] BuildTraitSourceButtonsForPopup()
+        {
+            try
+            {
+                var seen = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                var list = new System.Collections.Generic.List<string>();
+                list.Add("All");
+
+                AppendTraitSources(list, seen, GetCachedAllSpeciesTraitDefs());
+                AppendTraitSources(list, seen, GetCachedAllStatLimitTraitDefs());
+                AppendTraitSources(list, seen, GetCachedAllBloodlineTraitDefs());
+                AppendTraitSources(list, seen, GetCachedUniversalTraitDefs());
+                return list.ToArray();
+            }
+            catch { }
+            return new string[] { "All" };
+        }
+
+        private void AppendTraitSources(System.Collections.Generic.List<string> list, System.Collections.Generic.HashSet<string> seen, object[] defs)
+        {
+            if (defs == null) return;
+            for (int i = 0; i < defs.Length; i++)
+            {
+                var d = defs[i];
+                if (d == null) continue;
+                string src = GameApi.GetTraitSourceForUI(d);
+                if (string.IsNullOrEmpty(src)) continue;
+                if (seen.Add(src)) list.Add(src);
+            }
+        }
+
+        private void MarkFarmCacheDirty()
+        {
+            _farmMonstersCacheDirty = true;
+        }
+
+        private void EnsureFarmMonstersCache()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (!_farmMonstersCacheDirty && (now - _farmMonstersCacheAt) < FarmMonstersCacheSeconds) return;
+
+            _farmMonstersCacheDirty = false;
+            _farmMonstersCacheAt = now;
+            _farmMonstersCache.Clear();
+
+            try
+            {
+                var mons = GameApi.GetActiveMonsters();
+                for (int i = 0; i < mons.Length; i++)
+                {
+                    var m = mons[i];
+                    if (m == null) continue;
+                    _farmMonstersCache.Add(new MonsterRowCache
+                    {
+                        Monster = m,
+                        Name = m.Name,
+                        Species = GameApi.GetMonsterSpecies(m),
+                        Pigment = GameApi.GetMonsterPigment(m)
+                    });
+                }
+            }
+            catch { }
+        }
+
+        private object[] GetCachedMonsterTraits(object monster)
+        {
+            if (monster == null) return new object[0];
+            float now = Time.realtimeSinceStartup;
+            object[] traits;
+            float at;
+            if (_monsterTraitsSnapshotCache.TryGetValue(monster, out traits) &&
+                _monsterTraitsSnapshotAt.TryGetValue(monster, out at) &&
+                (now - at) < MonsterTraitsCacheSeconds)
+            {
+                return traits;
+            }
+
+            traits = GameApi.GetMonsterTraits(monster);
+            _monsterTraitsSnapshotCache[monster] = traits;
+            _monsterTraitsSnapshotAt[monster] = now;
+            return traits;
         }
 
         private object[] GetCachedSpeciesTraitDefs(string speciesName)
@@ -481,6 +660,15 @@ namespace CloudMeadow.CreativeMode
             return defs;
         }
 
+        private object[] GetCachedAllSpeciesTraitDefs()
+        {
+            if (_cacheAllSpeciesTraitDefsStatic == null)
+            {
+                _cacheAllSpeciesTraitDefsStatic = SortTraitDefinitions(GameApi.GetSpeciesTraitDefinitionsForAllSpeciesUI());
+            }
+            return _cacheAllSpeciesTraitDefsStatic;
+        }
+
         private object[] GetCachedStatLimitTraitDefs(string speciesName)
         {
             object[] defs;
@@ -492,6 +680,15 @@ namespace CloudMeadow.CreativeMode
             return defs;
         }
 
+        private object[] GetCachedAllStatLimitTraitDefs()
+        {
+            if (_cacheAllStatLimitTraitDefsStatic == null)
+            {
+                _cacheAllStatLimitTraitDefsStatic = SortTraitDefinitions(GameApi.GetStatLimitTraitDefinitionsForAllSpeciesUI());
+            }
+            return _cacheAllStatLimitTraitDefsStatic;
+        }
+
         private object[] GetCachedBloodlineTraitDefs(string speciesName)
         {
             object[] defs;
@@ -501,6 +698,15 @@ namespace CloudMeadow.CreativeMode
                 _cacheBloodlineTraitDefsStatic[speciesName] = defs;
             }
             return defs;
+        }
+
+        private object[] GetCachedAllBloodlineTraitDefs()
+        {
+            if (_cacheAllBloodlineTraitDefsStatic == null)
+            {
+                _cacheAllBloodlineTraitDefsStatic = SortTraitDefinitions(GameApi.GetBloodlineTraitDefinitionsForAllSpeciesUI());
+            }
+            return _cacheAllBloodlineTraitDefsStatic;
         }
 
         private object[] GetCachedUniversalTraitDefs()
@@ -541,7 +747,7 @@ namespace CloudMeadow.CreativeMode
             var set = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
             try
             {
-                var traits = GameApi.GetMonsterTraits(monster);
+                var traits = GetCachedMonsterTraits(monster);
                 int i;
                 for (i = 0; i < traits.Length; i++)
                 {

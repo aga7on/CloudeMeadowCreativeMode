@@ -709,6 +709,34 @@ namespace CloudMeadow.CreativeMode
             return new object[0];
         }
 
+        public static string[] GetAllItemCategoryNames()
+        {
+            try
+            {
+                var values = System.Enum.GetValues(typeof(TeamNimbus.CloudMeadow.Items.ItemCategory));
+                var arr = new string[values.Length + 1];
+                arr[0] = "All";
+                for (int i = 0; i < values.Length; i++) arr[i + 1] = values.GetValue(i).ToString();
+                return arr;
+            }
+            catch
+            {
+                return new string[] { "All" };
+            }
+        }
+
+        public static string GetItemCategoryName(object def)
+        {
+            try
+            {
+                if (def == null) return string.Empty;
+                var cat = SafeProp(def, "Category");
+                return cat != null ? cat.ToString() : string.Empty;
+            }
+            catch { }
+            return string.Empty;
+        }
+
         public static void AddItemByDefinition(object def, int amount, int qualityIndex)
         {
             try
@@ -2406,6 +2434,42 @@ namespace CloudMeadow.CreativeMode
             return DedupTraitDefinitionsByCode(uni);
         }
 
+        public static object[] GetSpeciesTraitDefinitionsForAllSpeciesUI()
+        {
+            return GetTraitDefinitionsByKindForUI(MonsterTraitKind.Species);
+        }
+
+        public static object[] GetStatLimitTraitDefinitionsForAllSpeciesUI()
+        {
+            return GetTraitDefinitionsByKindForUI(MonsterTraitKind.StatLimit);
+        }
+
+        public static object[] GetBloodlineTraitDefinitionsForAllSpeciesUI()
+        {
+            return GetTraitDefinitionsByKindForUI(MonsterTraitKind.Bloodline);
+        }
+
+        private static object[] GetTraitDefinitionsByKindForUI(MonsterTraitKind kind)
+        {
+            try
+            {
+                var all = GetAllTraitDefinitions();
+                var list = new System.Collections.Generic.List<object>();
+                for (int i = 0; i < all.Length; i++)
+                {
+                    var d = all[i];
+                    if (d == null) continue;
+                    if (ResolveMonsterTraitKind(d) == kind) list.Add(d);
+                }
+                return DedupTraitDefinitionsByCode(list.ToArray());
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.LogWarning("GetTraitDefinitionsByKindForUI failed: " + e.Message);
+            }
+            return new object[0];
+        }
+
         private static object[] DedupTraitDefinitionsByCode(object[] defs)
         {
             try
@@ -2482,6 +2546,113 @@ namespace CloudMeadow.CreativeMode
         public static string GetTraitSourceForUI(object obj)
         {
             return GetTraitSourceString(obj);
+        }
+
+        public static string GetTraitBadgeForUI(object obj)
+        {
+            try
+            {
+                string grade = GetTraitGradeLabelForUI(obj);
+                string quality = GetTraitQualityLabelForUI(obj);
+                if (!string.IsNullOrEmpty(grade) && !string.IsNullOrEmpty(quality)) return grade + " / " + quality;
+                if (!string.IsNullOrEmpty(grade)) return grade;
+                if (!string.IsNullOrEmpty(quality)) return quality;
+            }
+            catch { }
+            return string.Empty;
+        }
+
+        private static string GetTraitGradeLabelForUI(object obj)
+        {
+            try
+            {
+                var def = UnwrapTraitDefinition(obj);
+                int grade = SafeIntAny(obj, "Grade", "Level", "CurrentLevel");
+                if (grade <= 0) grade = SafeIntAny(def, "Grade", "Level", "CurrentLevel");
+                if (grade <= 0) grade = SafeIntAny(obj, "MaxGrade", "MaxLevel", "Cap");
+                if (grade <= 0) grade = SafeIntAny(def, "MaxGrade", "MaxLevel", "Cap");
+                if (grade <= 0) return string.Empty;
+                return ToRomanNumeral(grade);
+            }
+            catch { return string.Empty; }
+        }
+
+        private static string GetTraitQualityLabelForUI(object obj)
+        {
+            try
+            {
+                var def = UnwrapTraitDefinition(obj);
+                object quality = SafeProp(def, "TraitQuality") ?? SafeProp(def, "Quality") ?? SafeProp(def, "Rarity") ?? SafeProp(def, "Tier")
+                               ?? SafeProp(obj, "TraitQuality") ?? SafeProp(obj, "Quality") ?? SafeProp(obj, "Rarity") ?? SafeProp(obj, "Tier");
+                if (quality == null) return string.Empty;
+
+                string text = quality.ToString();
+                if (string.IsNullOrEmpty(text)) return string.Empty;
+
+                int numeric;
+                if (int.TryParse(text, out numeric))
+                {
+                    if (numeric <= 0) return "Gray";
+                    if (numeric == 1) return "Silver";
+                    return "Gold";
+                }
+
+                if (text.IndexOf("Rare", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Legend", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Gold", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Epic", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return "Gold";
+                }
+
+                if (text.IndexOf("Uncommon", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Silver", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return "Silver";
+                }
+
+                if (text.IndexOf("Common", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Negative", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Gray", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    text.IndexOf("Grey", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return "Gray";
+                }
+
+                return text;
+            }
+            catch { return string.Empty; }
+        }
+
+        private static int SafeIntAny(object o, params string[] names)
+        {
+            try
+            {
+                for (int i = 0; i < names.Length; i++)
+                {
+                    var v = SafeProp(o, names[i]);
+                    if (v == null) continue;
+                    try { return Convert.ToInt32(v); } catch { }
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        private static string ToRomanNumeral(int value)
+        {
+            if (value <= 0) return string.Empty;
+            if (value == 1) return "I";
+            if (value == 2) return "II";
+            if (value == 3) return "III";
+            if (value == 4) return "IV";
+            if (value == 5) return "V";
+            if (value == 6) return "VI";
+            if (value == 7) return "VII";
+            if (value == 8) return "VIII";
+            if (value == 9) return "IX";
+            if (value == 10) return "X";
+            return value.ToString();
         }
 
         private static object UnwrapTraitDefinition(object obj)

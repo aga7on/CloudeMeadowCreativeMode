@@ -28,10 +28,10 @@ namespace CloudMeadow.CreativeMode
             }
             catch { }
         }
-        private bool OnQuestChanged(TeamNimbus.CloudMeadow.Story.QuestSystem.Quest q) { _questsDirty = true; return true; }
-        private bool OnQuestStepStarted(TeamNimbus.Common.Utility.SerializableGuid qid, TeamNimbus.CloudMeadow.Story.QuestSystem.QuestStep s) { _questsDirty = true; return true; }
-        private bool OnQuestStepCompleted(TeamNimbus.Common.Utility.SerializableGuid qid, TeamNimbus.Common.Utility.SerializableGuid sid) { _questsDirty = true; return true; }
-        private bool OnQuestCompleted(TeamNimbus.Common.Utility.SerializableGuid qid) { _questsDirty = true; return true; }
+        private bool OnQuestChanged(TeamNimbus.CloudMeadow.Story.QuestSystem.Quest q) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); return true; }
+        private bool OnQuestStepStarted(TeamNimbus.Common.Utility.SerializableGuid qid, TeamNimbus.CloudMeadow.Story.QuestSystem.QuestStep s) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); return true; }
+        private bool OnQuestStepCompleted(TeamNimbus.Common.Utility.SerializableGuid qid, TeamNimbus.Common.Utility.SerializableGuid sid) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); return true; }
+        private bool OnQuestCompleted(TeamNimbus.Common.Utility.SerializableGuid qid) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); return true; }
 
         private string _planPopupText;
         private bool _showPlan;
@@ -96,9 +96,9 @@ namespace CloudMeadow.CreativeMode
                 _questsScroll = GUILayout.BeginScrollView(_questsScroll);
                 // Controls: Refresh button
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Refresh", GUILayout.Width(90))) { _questsDirty = true; }
-                if (GUILayout.Button("Show Active", GUILayout.Width(110))) { _showActiveOnly = true; _questsDirty = true; }
-                if (GUILayout.Button("Show All", GUILayout.Width(90))) { _showActiveOnly = false; _questsDirty = true; }
+                if (GUILayout.Button("Refresh", GUILayout.Width(90))) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }
+                if (GUILayout.Button("Show Active", GUILayout.Width(110))) { _showActiveOnly = true; _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }
+                if (GUILayout.Button("Show All", GUILayout.Width(90))) { _showActiveOnly = false; _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
 
