@@ -12,7 +12,7 @@ namespace CloudMeadow.CreativeMode
     {
         public const string PLUGIN_GUID = "dev.rovodev.cloudmeadow.creativemode";
         public const string PLUGIN_NAME = "Cloud Meadow Creative Mode";
-        public const string PLUGIN_VERSION = "1.0.0";
+        public const string PLUGIN_VERSION = "6.0.0";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;
@@ -50,8 +50,8 @@ namespace CloudMeadow.CreativeMode
 
             try
             {
-                gameObject.AddComponent<UIOverlay>();
-                AppendStartup("UIOverlay added");
+                var editor = gameObject.AddComponent<CreativeEditorUGUI>();
+                AppendStartup("uGUI editor added");
             }
             catch (Exception ex)
             {
@@ -59,6 +59,7 @@ namespace CloudMeadow.CreativeMode
             }
 
             LogBuffer.Add("Creative Mode plugin initialized");
+            Application.logMessageReceived += CaptureUnityError;
 
             try
             {
@@ -81,7 +82,15 @@ namespace CloudMeadow.CreativeMode
 
         private void OnDestroy()
         {
+            Application.logMessageReceived -= CaptureUnityError;
             try { if (Harmony != null) Harmony.UnpatchSelf(); } catch { }
+        }
+
+        private void CaptureUnityError(string condition, string stackTrace, LogType type)
+        {
+            if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert)
+                LogBuffer.AddError("Unity/Creative operation", condition, stackTrace);
         }
     }
 }
+

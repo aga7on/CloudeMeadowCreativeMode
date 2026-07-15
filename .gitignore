@@ -12,3 +12,5 @@ creative_startup.log
 tmp_rovodev_*.txt
 tmp_rovodev_*.log
 traits_report.txt
+
+release/

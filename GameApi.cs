@@ -13,6 +13,558 @@ namespace CloudMeadow.CreativeMode
 {
     internal static class GameApi
     {
+        public static void SetProtagonistGender(string desired)
+        {
+            try
+            {
+                var p = GameManager.Status.ProtagonistStats;
+                Gender target = (Gender)Enum.Parse(typeof(Gender), desired, true);
+                if (p.Gender == target) return;
+
+                // Gender is getter-only: the old generic property setter never reached
+                // the backing field. The game method also refreshes sprites/appearance.
+                var canSwap = p.GetType().GetMethod("CanSwapGender", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var swap = p.GetType().GetMethod("SwapGender", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                bool allowed = canSwap == null || (bool)canSwap.Invoke(p, null);
+                if (!allowed || swap == null) throw new MissingMethodException(p.GetType().FullName, "SwapGender");
+                swap.Invoke(p, null);
+                LogBuffer.Add("Protagonist gender -> " + p.Gender);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistGender failed: " + e); }
+        }
+
+        public static void SetProtagonistLevel(int level)
+        {
+            try
+            {
+                if (level < 1) level = 1;
+                if (level > GameManager.MaxLevel) level = GameManager.MaxLevel;
+                var p = GameManager.Status.ProtagonistStats;
+                var field = p.GetType().GetField("level", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) throw new MissingFieldException(p.GetType().FullName, "level");
+                field.SetValue(p, level);
+                LogBuffer.Add("Protagonist level -> " + level);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistLevel failed: " + e.Message); }
+        }
+
+        public static void RenameProtagonist(string name)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(name)) return;
+                GameManager.Status.ProtagonistStats.RenameCharacter(name.Trim());
+                LogBuffer.Add("Protagonist renamed -> " + name.Trim());
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("RenameProtagonist failed: " + e.Message); }
+        }
+
+        public static string GetProtagonistPrimaryStatsSummary()
+        {
+            try
+            {
+                var p = GameManager.Status.ProtagonistStats;
+                return "Physique " + p.GetPrimaryStatData(PrimaryStat.Physique).BaseValue +
+                       " | Stamina " + p.GetPrimaryStatData(PrimaryStat.Stamina).BaseValue +
+                       " | Intuition " + p.GetPrimaryStatData(PrimaryStat.Intuition).BaseValue +
+                       " | Swiftness " + p.GetPrimaryStatData(PrimaryStat.Swiftness).BaseValue;
+            }
+            catch { return "Primary stats unavailable"; }
+        }
+
+        public static void SetProtagonistPrimaryStat(string statName, int targetValue)
+        {
+            try
+            {
+                var stat = (PrimaryStat)Enum.Parse(typeof(PrimaryStat), statName, true);
+                var p = GameManager.Status.ProtagonistStats;
+                var data = p.GetPrimaryStatData(stat);
+                int growth = Mathf.RoundToInt(data.GrowthValue);
+                int desiredCustom = Mathf.Clamp(targetValue - growth, 0, data.MaxCustomValue);
+                p.IncreasePrimaryStatCustomValue(stat, desiredCustom - data.CustomValue);
+                LogBuffer.Add(stat + " -> " + p.GetPrimaryStatData(stat).BaseValue);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistPrimaryStat failed: " + e.Message); }
+        }
+
+        public static string GetPrimaryStatsSummary(PartyCharacterStats stats)
+        {
+            try
+            {
+                return "Physique " + stats.GetPrimaryStatData(PrimaryStat.Physique).BaseValue +
+                       " | Stamina " + stats.GetPrimaryStatData(PrimaryStat.Stamina).BaseValue +
+                       " | Intuition " + stats.GetPrimaryStatData(PrimaryStat.Intuition).BaseValue +
+                       " | Swiftness " + stats.GetPrimaryStatData(PrimaryStat.Swiftness).BaseValue;
+            }
+            catch { return "Primary stats unavailable"; }
+        }
+
+        public static void SetPrimaryStat(PartyCharacterStats stats, string statName, int targetValue)
+        {
+            try
+            {
+                if (stats == null) return; var stat = (PrimaryStat)Enum.Parse(typeof(PrimaryStat), statName, true);
+                var data = stats.GetPrimaryStatData(stat); int growth = Mathf.RoundToInt(data.GrowthValue);
+                int desiredCustom = Mathf.Clamp(targetValue - growth, 0, data.MaxCustomValue);
+                stats.IncreasePrimaryStatCustomValue(stat, desiredCustom - data.CustomValue);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetPrimaryStat failed: " + e.Message); }
+        }
+
+        public static void HealProtagonist()
+        {
+            try
+            {
+                var p = GameManager.Status.ProtagonistStats;
+                p.UpdateCurrentHP(p.GetMaxHP());
+                LogBuffer.Add("Protagonist fully healed");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("HealProtagonist failed: " + e.Message); }
+        }
+
+        public static void SetProtagonistXP(float value)
+        {
+            try
+            {
+                if (value < 0f) value = 0f; var p = GameManager.Status.ProtagonistStats;
+                var field = p.GetType().GetField("experienceSinceLastLevel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) throw new MissingFieldException("experienceSinceLastLevel"); field.SetValue(p, value);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistXP failed: " + e.Message); }
+        }
+
+        public static void SetProtagonistStatPoints(int value)
+        {
+            try
+            {
+                if (value < 0) value = 0; var p = GameManager.Status.ProtagonistStats;
+                var field = p.GetType().GetField("statPoints", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) throw new MissingFieldException("statPoints"); field.SetValue(p, value);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistStatPoints failed: " + e.Message); }
+        }
+
+        public static void SetProtagonistPronoun(string value)
+        {
+            try
+            {
+                var parsed = (Pronoun)Enum.Parse(typeof(Pronoun), value, true);
+                GameManager.Status.ProtagonistStats.UpdatePronoun(parsed);
+                LogBuffer.Add("Protagonist pronoun -> " + parsed);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistPronoun failed: " + e.Message); }
+        }
+
+        public static void SyncProtagonistPronoun()
+        {
+            try
+            {
+                var p = GameManager.Status.ProtagonistStats;
+                SetProtagonistPronoun(p.Gender == Gender.Male ? "He" : "She");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SyncProtagonistPronoun failed: " + e.Message); }
+        }
+
+        public static string[] GetProtagonistAbilitySummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try
+            {
+                RepairProtagonistAbilityStates();
+                int index = 0; foreach (var state in GameManager.Status.ProtagonistStats.EnumerateAbilityStates())
+                    lines.Add("Slot " + (index++) + ": " + (state.Asset != null ? state.Asset.name : "(missing)") + " | State " + state.ActiveStateIndex + " | Cooldown " + state.TurnsRemainingOnCooldown);
+            }
+            catch (Exception e) { lines.Add("Ability scan failed: " + e.Message); }
+            return lines.ToArray();
+        }
+
+        public static int RepairProtagonistAbilityStates()
+        {
+            int repaired = 0;
+            try
+            {
+                var protagonist = GameManager.Status.ProtagonistStats;
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                System.Reflection.FieldInfo dataField = null; Type scan = protagonist.GetType();
+                while (scan != null && dataField == null) { dataField = scan.GetField("dataForAbilities", flags); scan = scan.BaseType; }
+                var data = dataField != null ? dataField.GetValue(protagonist) as System.Collections.IList : null;
+                if (data == null) return 0;
+                for (int slot = 0; slot < data.Count; slot++)
+                {
+                    object abilityData = data[slot]; if (abilityData == null) continue;
+                    var stateProp = abilityData.GetType().GetProperty("StateIndex", flags);
+                    int current = stateProp != null ? Convert.ToInt32(stateProp.GetValue(abilityData, null)) : 0;
+                    int count = GetProtagonistAbilityStateCount(protagonist, slot);
+                    int safe = count > 0 ? Mathf.Clamp(current, 0, count - 1) : 0;
+                    if (current != safe) { protagonist.ChangeAbilityState(slot, safe); repaired++; LogBuffer.Add("Repaired player ability slot " + slot + ": " + current + " -> " + safe); }
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("RepairProtagonistAbilityStates failed: " + e.Message); }
+            return repaired;
+        }
+
+        private static int GetProtagonistAbilityStateCount(object protagonist, int slot)
+        {
+            try
+            {
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                var assetProp = protagonist.GetType().GetProperty("CharacterAsset", flags);
+                object asset = assetProp != null ? assetProp.GetValue(protagonist, null) : null; if (asset == null) return 0;
+                var slotsProp = asset.GetType().GetProperty("AbilitySlots", flags);
+                object slots = slotsProp != null ? slotsProp.GetValue(asset, null) : null;
+                var slotsList = slots as System.Collections.IList; if (slotsList == null || slot < 0 || slot >= slotsList.Count) return 0;
+                object abilitySlot = slotsList[slot]; if (abilitySlot == null) return 0;
+                var countProp = abilitySlot.GetType().GetProperty("Count", flags) ?? abilitySlot.GetType().GetProperty("Length", flags);
+                if (countProp != null) return Convert.ToInt32(countProp.GetValue(abilitySlot, null));
+                var collection = abilitySlot as System.Collections.ICollection; if (collection != null) return collection.Count;
+            }
+            catch { }
+            return 0;
+        }
+
+        public static void SetProtagonistAbilityState(int slot, int state)
+        {
+            try
+            {
+                var protagonist = GameManager.Status.ProtagonistStats; int count = GetProtagonistAbilityStateCount(protagonist, slot);
+                if (count <= 0) throw new ArgumentOutOfRangeException("slot", "Ability slot is unavailable");
+                int safe = Mathf.Clamp(state, 0, count - 1); protagonist.ChangeAbilityState(slot, safe);
+                LogBuffer.Add("Player ability slot " + slot + " -> state " + safe + (safe != state ? " (clamped from " + state + ")" : string.Empty));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistAbilityState failed: " + e.Message); }
+        }
+
+        public static void ClearProtagonistCooldowns()
+        { try { GameManager.Status.ProtagonistStats.ClearAllCooldowns(); LogBuffer.Add("Player cooldowns cleared"); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+
+        public static void ResetProtagonistLifecycleStatus()
+        {
+            try
+            {
+                var p = GameManager.Status.ProtagonistStats; var type = p.GetType(); System.Reflection.MethodInfo method = null;
+                while (type != null && method == null) { method = type.GetMethod("UpdateStatus", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.DeclaredOnly); type = type.BaseType; }
+                if (method == null) throw new MissingMethodException("UpdateStatus");
+                object date = Activator.CreateInstance(method.GetParameters()[1].ParameterType);
+                method.Invoke(p, new object[] { TeamNimbus.CloudMeadow.Monsters.PartyCharacterStatus.Idle, date });
+                LogBuffer.Add("Player lifecycle status -> Idle");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("ResetProtagonistLifecycleStatus failed: " + e.Message); }
+        }
+        public static EquipmentItemEntry[] GetPlayerEquipmentInventory()
+        {
+            var list = new System.Collections.Generic.List<EquipmentItemEntry>(); try { foreach (var entry in GameManager.Status.Inventory.EnumerateEquipmentEntrys()) { var equipment = entry as EquipmentItemEntry; if (equipment != null) list.Add(equipment); } } catch { } return list.ToArray();
+        }
+        public static void EquipProtagonist(EquipmentItemEntry item) { try { if (item != null) { GameManager.Status.ProtagonistStats.EquipItem(item); LogBuffer.Add("Player equipped: " + item); } } catch (Exception e) { Plugin.Log.LogWarning("EquipProtagonist failed: " + e.Message); } }
+        public static void UnequipProtagonist(string category) { try { var c = (ItemCategory)Enum.Parse(typeof(ItemCategory), category, true); GameManager.Status.ProtagonistStats.UnequipItem(c); LogBuffer.Add("Player unequipped: " + c); } catch (Exception e) { Plugin.Log.LogWarning("UnequipProtagonist failed: " + e.Message); } }
+
+        public static string BackupAllSaves()
+        {
+            try
+            {
+                string source = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "..\\LocalLow\\Team Nimbus\\Cloud Meadow");
+                source = System.IO.Path.GetFullPath(source);
+                string root = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx\\plugins\\CloudMeadowCreativeMode\\backups");
+                string target = System.IO.Path.Combine(root, DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                System.IO.Directory.CreateDirectory(target);
+                string[] files = System.IO.Directory.GetFiles(source, "*", System.IO.SearchOption.AllDirectories);
+                int copied = 0;
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string ext = System.IO.Path.GetExtension(files[i]).ToLowerInvariant();
+                    string name = System.IO.Path.GetFileName(files[i]).ToLowerInvariant();
+                    if (ext != ".json" && ext != ".sav" && ext != ".meta" && name != "steam_autocloud.vdf") continue;
+                    string rel = files[i].Substring(source.Length).TrimStart('\\', '/');
+                    string dest = System.IO.Path.Combine(target, rel);
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dest));
+                    System.IO.File.Copy(files[i], dest, true); copied++;
+                }
+                LogBuffer.Add("Save backup: " + copied + " files -> " + target);
+                try
+                {
+                    var dirs = new System.Collections.Generic.List<System.IO.DirectoryInfo>(new System.IO.DirectoryInfo(root).GetDirectories());
+                    dirs.Sort(delegate(System.IO.DirectoryInfo a, System.IO.DirectoryInfo b) { return b.CreationTimeUtc.CompareTo(a.CreationTimeUtc); });
+                    for (int i = 10; i < dirs.Count; i++) dirs[i].Delete(true);
+                }
+                catch { }
+                return target;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("BackupAllSaves failed: " + e); return "FAILED: " + e.Message; }
+        }
+
+        public static string[] GetSaveBackupSummary()
+        {
+            try
+            {
+                string root = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx\\plugins\\CloudMeadowCreativeMode\\backups");
+                if (!System.IO.Directory.Exists(root)) return new string[0];
+                var dirs = new System.Collections.Generic.List<System.IO.DirectoryInfo>(new System.IO.DirectoryInfo(root).GetDirectories());
+                dirs.Sort(delegate(System.IO.DirectoryInfo a, System.IO.DirectoryInfo b) { return b.CreationTimeUtc.CompareTo(a.CreationTimeUtc); });
+                var lines = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < dirs.Count && i < 10; i++) lines.Add(dirs[i].Name + " | " + dirs[i].GetFiles("*", System.IO.SearchOption.AllDirectories).Length + " files");
+                return lines.ToArray();
+            }
+            catch { return new string[0]; }
+        }
+        public static string RestoreLatestSaveBackup()
+        {
+            try
+            {
+                if (Ready) return "REFUSED: return to main menu before restoring";
+                string root = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx\\plugins\\CloudMeadowCreativeMode\\backups"); if (!System.IO.Directory.Exists(root)) return "No backups";
+                var dirs = new System.Collections.Generic.List<System.IO.DirectoryInfo>(new System.IO.DirectoryInfo(root).GetDirectories()); dirs.Sort(delegate(System.IO.DirectoryInfo a, System.IO.DirectoryInfo b) { return b.CreationTimeUtc.CompareTo(a.CreationTimeUtc); }); if (dirs.Count == 0) return "No backups";
+                string target = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "..\\LocalLow\\Team Nimbus\\Cloud Meadow")); int copied = 0;
+                foreach (var file in dirs[0].GetFiles("*", System.IO.SearchOption.AllDirectories)) { string rel = file.FullName.Substring(dirs[0].FullName.Length).TrimStart('\\', '/'); string dest = System.IO.Path.Combine(target, rel); System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dest)); file.CopyTo(dest, true); copied++; }
+                string result = "Restored " + copied + " files from " + dirs[0].Name; LogBuffer.Add(result); return result;
+            }
+            catch (Exception e) { return "FAILED: " + e.Message; }
+        }
+
+        public static string GetCompatibilitySummary()
+        {
+            try
+            {
+                string gameDll = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "Cloud Meadow_Data\\Managed\\Game.dll");
+                var info = new System.IO.FileInfo(gameDll);
+                string hash;
+                using (var stream = System.IO.File.OpenRead(gameDll))
+                using (var sha = new System.Security.Cryptography.SHA256Managed())
+                    hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty).Substring(0, 16);
+                return "Game.dll " + info.Length + " bytes | " + info.LastWriteTime.ToString("u") + " | SHA256 " + hash + "... | API ready=" + Ready;
+            }
+            catch (Exception e) { return "Compatibility scan failed: " + e.Message; }
+        }
+
+        public static string GetTraitDisplayName(object value)
+        {
+            try
+            {
+                var instance = value as TeamNimbus.CloudMeadow.Traits.TraitInstance;
+                if (instance != null) return instance.DisplayName;
+                var definition = value as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition;
+                if (definition != null) return definition.DisplayName;
+            }
+            catch { }
+            return value != null ? value.ToString() : "Unknown trait";
+        }
+
+        public static string GetTraitDescription(object value)
+        {
+            try
+            {
+                var instance = value as TeamNimbus.CloudMeadow.Traits.TraitInstance;
+                if (instance != null) return instance.TraitDefinition.Description(instance);
+                var definition = value as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition;
+                if (definition != null) return definition.Description(new TeamNimbus.CloudMeadow.Traits.TraitInstance(definition, 1));
+            }
+            catch { }
+            return "Description unavailable";
+        }
+
+        public static string GetTraitQuality(object value)
+        {
+            try
+            {
+                var instance = value as TeamNimbus.CloudMeadow.Traits.TraitInstance;
+                if (instance != null) return instance.Quality.ToString();
+                var definition = value as TeamNimbus.CloudMeadow.Traits.BaseTraitDefinition;
+                if (definition != null) return definition.Quality.ToString();
+            }
+            catch { }
+            return "Common";
+        }
+
+        public static string GetMigrationSummary()
+        {
+            try
+            {
+                var data = GameManager.Status.MigrationSaveData;
+                return "Unlocked: " + data.IsMigrationUnlocked + " | Seed: " + data.Seed +
+                       " | Savannah: " + data.ActiveSavannahMigrationDate +
+                       " | Forest: " + data.ActiveForestMigrationDate +
+                       " | Migrated species: " + data.AllMigratedSpecies.Count;
+            }
+            catch (Exception e) { return "Migration data unavailable: " + e.Message; }
+        }
+
+        public static void UnlockMigrations()
+        {
+            try
+            {
+                var data = GameManager.Status.MigrationSaveData;
+                var field = data.GetType().GetField("migrationsUnlocked", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) throw new MissingFieldException(data.GetType().FullName, "migrationsUnlocked");
+                field.SetValue(data, true); data.UpdateActiveMigrationDate();
+                LogBuffer.Add("Migrations unlocked");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("UnlockMigrations failed: " + e.Message); }
+        }
+
+        public static void RerollMigrations()
+        {
+            try
+            {
+                var data = GameManager.Status.MigrationSaveData;
+                data.SetSeed(UnityEngine.Random.Range(100000, 999999));
+                data.UpdateActiveMigrationDate(); data.RegenerateRuntimeData();
+                LogBuffer.Add("Migration seed -> " + data.Seed);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("RerollMigrations failed: " + e.Message); }
+        }
+        public static void LockMigrations() { try { GameManager.Status.MigrationSaveData.SetMigrationsLocked(); LogBuffer.Add("Migrations locked"); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void SyncMigrationDungeonProgress() { try { var data = GameManager.Status.MigrationSaveData; data.UpdateWithPersistentData(); data.RegenerateRuntimeData(); LogBuffer.Add("Migration progress synchronized"); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void ClearMigrationDiscoveries() { try { var data = GameManager.Status.MigrationSaveData; data.ClearDiscoveriesFromDungeons(); data.RegenerateRuntimeData(); LogBuffer.Add("Migration discoveries cleared"); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+
+        public static string GetDungeonSummary()
+        {
+            try
+            {
+                var s = GameManager.Status;
+                return "Current zone: " + s.CurrentZone + " | Savannah floor: " + s.SavannahPersistentDungeonData.CurrentFloor +
+                       " | Forest floor: " + s.ForestPersistentDungeonData.CurrentFloor;
+            }
+            catch (Exception e) { return "Dungeon data unavailable: " + e.Message; }
+        }
+
+        public static void SetDungeonFloor(string zoneName, int floor)
+        {
+            try
+            {
+                if (floor < 1) floor = 1;
+                TeamNimbus.CloudMeadow.Persistence.PersistentDungeonData data;
+                TeamNimbus.CloudMeadow.Dungeon.DungeonDescription.DungeonZone zone;
+                if (string.Equals(zoneName, "Forest", StringComparison.OrdinalIgnoreCase))
+                { data = GameManager.Status.ForestPersistentDungeonData; zone = TeamNimbus.CloudMeadow.Dungeon.DungeonDescription.DungeonZone.Forest; }
+                else
+                { data = GameManager.Status.SavannahPersistentDungeonData; zone = TeamNimbus.CloudMeadow.Dungeon.DungeonDescription.DungeonZone.Savannah; }
+                if (TeamNimbus.CloudMeadow.Persistence.PersistentDungeonData.GetDungeonDescriptionResourceBy(zone, floor) == null)
+                    throw new ArgumentOutOfRangeException("floor", "Dungeon floor resource does not exist");
+                data.SetTargetDungeonFloor(floor);
+                LogBuffer.Add(zone + " target floor -> " + floor);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetDungeonFloor failed: " + e.Message); }
+        }
+        public static void UnlockDungeonProgress(string zoneName)
+        {
+            try
+            {
+                var data = string.Equals(zoneName, "Forest", StringComparison.OrdinalIgnoreCase) ? GameManager.Status.ForestPersistentDungeonData : GameManager.Status.SavannahPersistentDungeonData;
+                int max = string.Equals(zoneName, "Forest", StringComparison.OrdinalIgnoreCase) ? 3 : 8;
+                for (int i = 1; i <= max; i++) { data.SetDiscoveredFloor(i); data.SetUnlockedFastTravelFloor(i); }
+                GameManager.Status.MigrationSaveData.UpdateWithPersistentData(); LogBuffer.Add(zoneName + " dungeon floors/fast travel unlocked");
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("UnlockDungeonProgress failed: " + e.Message); }
+        }
+        public static string[] GetSceneNames() { try { return Enum.GetNames(typeof(TeamNimbus.CloudMeadow.SceneIDs)); } catch { return new string[0]; } }
+        public static void LoadSceneByName(string sceneName)
+        {
+            try { var scene = (TeamNimbus.CloudMeadow.SceneIDs)Enum.Parse(typeof(TeamNimbus.CloudMeadow.SceneIDs), sceneName, true); GameManager.Instance.LoadScene(scene); LogBuffer.Add("Scene load requested: " + scene); }
+            catch (Exception e) { Plugin.Log.LogWarning("LoadSceneByName failed: " + e.Message); }
+        }
+        public static void RestartCurrentScene() { try { string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; GameManager.Instance.LoadSceneName(scene); LogBuffer.Add("Scene restart requested: " + scene); } catch (Exception e) { Plugin.Log.LogWarning("RestartCurrentScene failed: " + e.Message); } }
+
+        public static TeamNimbus.CloudMeadow.Combat.CombatUnit[] GetCombatUnits()
+        { try { return UnityEngine.Object.FindObjectsOfType<TeamNimbus.CloudMeadow.Combat.CombatUnit>(); } catch { return new TeamNimbus.CloudMeadow.Combat.CombatUnit[0]; } }
+
+        public static void HealCombatUnit(TeamNimbus.CloudMeadow.Combat.CombatUnit unit)
+        {
+            try
+            {
+                if (unit == null) return;
+                var stats = unit.CharacterStats; Type t = stats.GetType(); System.Reflection.FieldInfo hp = null;
+                while (t != null && hp == null) { hp = t.GetField("currentHP", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic); t = t.BaseType; }
+                if (hp == null) throw new MissingFieldException("currentHP"); hp.SetValue(stats, stats.GetMaxHP());
+                LogBuffer.Add("Healed combat unit: " + unit.DisplayName);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("HealCombatUnit failed: " + e.Message); }
+        }
+
+        public static void KillCombatUnit(TeamNimbus.CloudMeadow.Combat.CombatUnit unit)
+        { try { if (unit != null) unit.CharacterStats.DamageCurrentHP(unit.CharacterStats.GetCurrentHP() + unit.GetMaxHP()); } catch (Exception e) { Plugin.Log.LogWarning("KillCombatUnit failed: " + e.Message); } }
+
+        public static void ClearCombatStatuses(TeamNimbus.CloudMeadow.Combat.CombatUnit unit)
+        {
+            try
+            {
+                if (unit == null) return; var statuses = new System.Collections.Generic.List<TeamNimbus.CloudMeadow.Combat.CombatStatus>(unit.ActiveCombatStatuses);
+                for (int i = 0; i < statuses.Count; i++) unit.RemoveActiveCombatStatus(statuses[i]);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("ClearCombatStatuses failed: " + e.Message); }
+        }
+        public static void ClearCombatCooldowns(TeamNimbus.CloudMeadow.Combat.CombatUnit unit)
+        { try { if (unit != null && unit.CharacterStats != null) { unit.CharacterStats.ClearAllCooldowns(); LogBuffer.Add("Cooldowns cleared: " + unit.DisplayName); } } catch (Exception e) { Plugin.Log.LogWarning("ClearCombatCooldowns failed: " + e.Message); } }
+        public static string[] GetCombatUnitDetails(TeamNimbus.CloudMeadow.Combat.CombatUnit unit)
+        {
+            var lines = new System.Collections.Generic.List<string>(); if (unit == null) return lines.ToArray();
+            try { int i = 0; foreach (var state in unit.CharacterStats.EnumerateAbilityStates()) lines.Add("Ability " + (i++) + ": " + (state.Asset != null ? state.Asset.name : "missing") + " | state " + state.ActiveStateIndex + " | cooldown " + state.TurnsRemainingOnCooldown); foreach (var status in unit.ActiveCombatStatuses) lines.Add("Status: " + status); }
+            catch (Exception e) { lines.Add("Combat detail scan failed: " + e.Message); } return lines.ToArray();
+        }
+
+        public static string[] GetCalendarEventSummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try
+            {
+                var s = GameManager.Status; var scheduler = s.EventScheduler; var date = s.CurrentDateTime;
+                foreach (var e in scheduler.GetActiveEventTypesForDay(date)) lines.Add("Event: " + e);
+                foreach (var b in scheduler.GetBirthdaysForDay(date)) lines.Add("Birthday: " + b);
+                var merchant = scheduler.GetActiveMerchant(date); if (merchant != TeamNimbus.CloudMeadow.Managers.CalendarEvents.ClovertonMerchant.None) lines.Add("Merchant: " + merchant);
+                if (lines.Count == 0) lines.Add("No scheduled events today");
+            }
+            catch (Exception e) { lines.Add("Calendar events unavailable: " + e.Message); }
+            return lines.ToArray();
+        }
+        public static string[] GetCalendarSchedule(int days)
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try { var s = GameManager.Status; for (int i = 0; i < days; i++) { var date = s.CurrentDateTime.CreateFutureDate(new GameTime.Duration(0, 0, i, 0, 0)); var events = new System.Collections.Generic.List<string>(); foreach (var e in s.EventScheduler.GetActiveEventTypesForDay(date)) events.Add(e.ToString()); foreach (var b in s.EventScheduler.GetBirthdaysForDay(date)) events.Add("Birthday " + b); var merchant = s.EventScheduler.GetActiveMerchant(date); if (merchant != TeamNimbus.CloudMeadow.Managers.CalendarEvents.ClovertonMerchant.None) events.Add("Merchant " + merchant); if (events.Count > 0) lines.Add(date + " | " + string.Join(", ", events.ToArray())); } if (lines.Count == 0) lines.Add("No scheduled events in the next " + days + " days"); }
+            catch (Exception e) { lines.Add("Calendar scan failed: " + e.Message); } return lines.ToArray();
+        }
+        public static string[] GetWeatherForecastSummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try { var status = GameManager.Status; lines.Add("Forecast days: " + status.DaysOfWeatherPredicted + "/14 | Balloon progress: " + (status.FarmStatus.WeatherBalloon.ResolveProgressToNextPrediction() * 100f).ToString("0") + "%"); var f = status.GetType().GetField("_predictedWeatherCache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic); var en = f != null ? f.GetValue(status) as System.Collections.IEnumerable : null; int i = 1; if (en != null) foreach (var weather in en) lines.Add("Day +" + (i++) + ": " + weather); }
+            catch (Exception e) { lines.Add("Forecast unavailable: " + e.Message); } return lines.ToArray();
+        }
+        public static void PredictWeather(int days) { try { GameManager.Status.PredictWeather(days); LogBuffer.Add("Weather forecast extended by " + days + " days"); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+
+        public static bool SetMemberFromString(object target, string memberName, string text)
+        {
+            try
+            {
+                if (target == null) return false; var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                Type t = target.GetType(); var prop = t.GetProperty(memberName, flags);
+                if (prop != null && prop.CanWrite) { prop.SetValue(target, ConvertText(text, prop.PropertyType), null); return true; }
+                var field = t.GetField(memberName, flags); if (field != null && !field.IsInitOnly) { field.SetValue(target, ConvertText(text, field.FieldType)); return true; }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMemberFromString failed: " + e.Message); }
+            return false;
+        }
+
+        public static string ExportObjectJson(object target, string fileName)
+        {
+            try
+            {
+                if (target == null) return "FAILED: target missing"; string root = System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx\\plugins\\CloudMeadowCreativeMode\\exports"); System.IO.Directory.CreateDirectory(root);
+                foreach (char c in System.IO.Path.GetInvalidFileNameChars()) fileName = fileName.Replace(c, '_'); string path = System.IO.Path.Combine(root, fileName + ".json");
+                System.IO.File.WriteAllText(path, UnityEngine.JsonUtility.ToJson(target, true)); LogBuffer.Add("Exported JSON: " + path); return path;
+            }
+            catch (Exception e) { return "FAILED: " + e.Message; }
+        }
+        public static bool ImportObjectJson(object target, string path)
+        {
+            try { if (target == null || !System.IO.File.Exists(path)) return false; UnityEngine.JsonUtility.FromJsonOverwrite(System.IO.File.ReadAllText(path), target); LogBuffer.Add("Imported JSON: " + path); return true; }
+            catch (Exception e) { Plugin.Log.LogWarning("ImportObjectJson failed: " + e.Message); return false; }
+        }
+
+        private static object ConvertText(string text, Type type)
+        {
+            var nullable = Nullable.GetUnderlyingType(type); if (nullable != null) type = nullable;
+            if (type == typeof(string)) return text;
+            if (type == typeof(bool)) return string.Equals(text, "true", StringComparison.OrdinalIgnoreCase) || text == "1";
+            if (type.IsEnum) return Enum.Parse(type, text, true);
+            return Convert.ChangeType(text, type, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         // Movement tweaks
         private static float _speedMultiplier = 1f;
         public static float SpeedMultiplier { get { return _speedMultiplier; } }
@@ -147,6 +699,114 @@ namespace CloudMeadow.CreativeMode
             }
             catch (Exception e) { Plugin.Log.LogWarning("WinCombat failed: " + e.Message); }
         }
+
+        public static void SetMonsterLevel(MonsterCharacterStats monster, int level)
+        {
+            try
+            {
+                if (monster == null) return; if (level < 1) level = 1; if (level > GameManager.MaxLevel) level = GameManager.MaxLevel;
+                Type t = monster.GetType(); System.Reflection.FieldInfo field = null;
+                while (t != null && field == null) { field = t.GetField("level", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic); t = t.BaseType; }
+                if (field == null) throw new MissingFieldException("level"); field.SetValue(monster, level);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterLevel failed: " + e.Message); }
+        }
+        public static string[] GetMonsterFamilySummary(MonsterCharacterStats monster)
+        {
+            var lines = new System.Collections.Generic.List<string>(); if (monster == null) return lines.ToArray();
+            try
+            {
+                lines.Add("ID: " + monster.PartyCharacterID + " | Birth: " + monster.BirthDate + " | Status: " + monster.CurrentStatus + " | HP " + monster.GetCurrentHP().ToString("0") + "/" + monster.GetMaxHP().ToString("0"));
+                lines.Add("Parents: " + (monster.ParentsUnknown ? "unknown" : monster.FirstParentID + " + " + monster.SecondParentID) + " | Home group: " + monster.HomeGroupID + " | Barn: " + monster.IsAssignedToTheBarn);
+                lines.Add("Job: " + monster.ActiveJob + " | Pregnant/incubating: " + monster.IsPregnant);
+                var all = GetActiveMonsters(); var children = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < all.Length; i++) if (all[i] != null && (all[i].FirstParentID == monster.PartyCharacterID || all[i].SecondParentID == monster.PartyCharacterID)) children.Add(all[i].Name + " (#" + all[i].PartyCharacterID + ")");
+                lines.Add("Children: " + (children.Count == 0 ? "none" : string.Join(", ", children.ToArray())));
+            }
+            catch (Exception e) { lines.Add("Family scan failed: " + e.Message); }
+            return lines.ToArray();
+        }
+        public static bool SetMonsterParents(MonsterCharacterStats monster, int first, int second)
+        {
+            try
+            {
+                if (monster == null || first == monster.PartyCharacterID || second == monster.PartyCharacterID || first == second) return false;
+                if (WouldCreateFamilyCycle(monster.PartyCharacterID, first) || WouldCreateFamilyCycle(monster.PartyCharacterID, second)) return false;
+                SetMonsterParentsUnchecked(monster, first, second); LogBuffer.Add("Parents updated for " + monster.Name + ": " + first + ", " + second); return true;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetMonsterParents failed: " + e.Message); return false; }
+        }
+        public static void ClearMonsterParents(MonsterCharacterStats monster) { if (monster != null) { SetMonsterParentsUnchecked(monster, -1, -1); LogBuffer.Add("Parents cleared for " + monster.Name); } }
+        private static void SetMonsterParentsUnchecked(MonsterCharacterStats monster, int first, int second)
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var f1 = typeof(MonsterCharacterStats).GetField("firstParentID", flags); var f2 = typeof(MonsterCharacterStats).GetField("secondParentID", flags);
+            if (f1 == null || f2 == null) throw new MissingFieldException("monster parent IDs"); f1.SetValue(monster, first); f2.SetValue(monster, second);
+        }
+        private static bool WouldCreateFamilyCycle(int childId, int proposedParent)
+        {
+            if (proposedParent < 0) return false; var all = GetActiveMonsters(); var stack = new System.Collections.Generic.Stack<int>(); var seen = new System.Collections.Generic.HashSet<int>(); stack.Push(proposedParent);
+            while (stack.Count > 0) { int id = stack.Pop(); if (id == childId) return true; if (!seen.Add(id)) continue; for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].PartyCharacterID == id) { if (all[i].FirstParentID >= 0) stack.Push(all[i].FirstParentID); if (all[i].SecondParentID >= 0) stack.Push(all[i].SecondParentID); break; } }
+            return false;
+        }
+        public static string ExportFamilyTree(string path)
+        {
+            try { var lines = new System.Collections.Generic.List<string>(); lines.Add("ID\tName\tSpecies\tFirstParent\tSecondParent"); foreach (var m in GetActiveMonsters()) if (m != null) lines.Add(m.PartyCharacterID + "\t" + m.Name + "\t" + m.FarmableSpecies + "\t" + m.FirstParentID + "\t" + m.SecondParentID); System.IO.File.WriteAllLines(path, lines.ToArray()); return path; }
+            catch (Exception e) { return "FAILED: " + e.Message; }
+        }
+        public static string[] GetFarmBuildingSummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try { var buildings = GameManager.Status.FarmStatus.SpecialBuildings; for (int i = 0; i < buildings.Count; i++) lines.Add("Slot " + i + ": " + buildings[i].BuildingType + " | Built: " + buildings[i].HasBuilding + " | Name: " + buildings[i].Name); }
+            catch (Exception e) { lines.Add("Building scan failed: " + e.Message); } return lines.ToArray();
+        }
+        public static void SetFarmBuildingType(int index, string typeName)
+        {
+            try { var buildings = GameManager.Status.FarmStatus.SpecialBuildings; if (index < 0 || index >= buildings.Count) return; var type = (TeamNimbus.CloudMeadow.Persistence.FarmBuildingTypes)Enum.Parse(typeof(TeamNimbus.CloudMeadow.Persistence.FarmBuildingTypes), typeName, true); buildings[index].UpdateBuildingType(type); MarkPendingFarmLayoutRefresh(); LogBuffer.Add("Farm building slot " + index + " -> " + type); }
+            catch (Exception e) { Plugin.Log.LogWarning("SetFarmBuildingType failed: " + e.Message); }
+        }
+        public static string[] AuditFarmIntegrity()
+        {
+            var lines = new System.Collections.Generic.List<string>(); int issues = 0;
+            try
+            {
+                var all = GetActiveMonsters(); var ids = new System.Collections.Generic.HashSet<int>();
+                for (int i = 0; i < all.Length; i++) if (all[i] != null) { if (!ids.Add(all[i].PartyCharacterID)) { lines.Add("Duplicate monster ID: " + all[i].PartyCharacterID); issues++; } }
+                for (int i = 0; i < all.Length; i++) if (all[i] != null && !all[i].ParentsUnknown)
+                {
+                    if (all[i].FirstParentID == all[i].PartyCharacterID || all[i].SecondParentID == all[i].PartyCharacterID) { lines.Add("Self-parent link: " + all[i].Name); issues++; }
+                    if (all[i].FirstParentID >= 0 && !ids.Contains(all[i].FirstParentID)) { lines.Add("Missing first parent: " + all[i].Name + " -> " + all[i].FirstParentID); issues++; }
+                    if (all[i].SecondParentID >= 0 && !ids.Contains(all[i].SecondParentID)) { lines.Add("Missing second parent: " + all[i].Name + " -> " + all[i].SecondParentID); issues++; }
+                }
+                var fs = GameManager.Status.FarmStatus; lines.Add("Monsters reported: " + GameManager.Status.NumMonstersOnTheFarm + " | Enumerated: " + all.Length + " | Breeding couples: " + GameManager.Status.BreedingCouples.Count + " | Buildings: " + fs.SpecialBuildings.Count + " | Eggs: " + GetIncubatorEggs().Length);
+                if (GameManager.Status.NumMonstersOnTheFarm != all.Length) { lines.Add("Monster count mismatch detected"); issues++; }
+            }
+            catch (Exception e) { lines.Add("Farm audit failed: " + e.Message); issues++; }
+            lines.Insert(0, issues == 0 ? "Farm integrity: OK" : "Farm integrity issues: " + issues); return lines.ToArray();
+        }
+        public static string GetFarmCapacitySummary()
+        { try { int used = GameManager.Status.NumMonstersOnTheFarm, max = GameManager.Status.FarmStatus.ResolveNumberOfMonsterSpotsOnFarm(), eggs = GetIncubatorEggs().Length; return "Farm capacity: " + used + "/" + max + " | Incubator eggs: " + eggs + " | Free after all hatch: " + (max - used - eggs); } catch (Exception e) { return "Farm capacity unavailable: " + e.Message; } }
+        public static string[] GetFarmPlotSummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try { var plots = GameManager.Status.FarmStatus.Plots; for (int i = 0; i < plots.Length; i++) { var p = plots[i]; int planted = 0, watered = 0; for (int j = 0; j < p.Plants.Length; j++) { if (p.Plants[j].CurrentStatus != TeamNimbus.CloudMeadow.Farm.CropStatus.Dirt) planted++; if (p.Plants[j].IsWatered) watered++; } lines.Add("Plot " + i + " | " + p.BuildingType + " | Lv " + p.UpgradeLevel + " | Active " + p.GetNumActivePlantingSpots() + " | Planted " + planted + " | Watered " + watered); } }
+            catch (Exception e) { lines.Add("Plot scan failed: " + e.Message); } return lines.ToArray();
+        }
+        public static void UpgradeFarmPlot(int index) { try { var p = GameManager.Status.FarmStatus.Plots[index]; p.UpgradeField(); MarkPendingFarmLayoutRefresh(); LogBuffer.Add("Farm plot upgraded: " + index); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void WaterFarmPlot(int index) { try { var p = GameManager.Status.FarmStatus.Plots[index]; for (int i = 0; i < p.Plants.Length; i++) p.Plants[i].Water(); LogBuffer.Add("Farm plot watered: " + index); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void GrowFarmPlot(int index) { try { var p = GameManager.Status.FarmStatus.Plots[index]; for (int i = 0; i < p.Plants.Length; i++) if (p.Plants[i].CurrentStatus != TeamNimbus.CloudMeadow.Farm.CropStatus.Dirt) p.Plants[i].ForceCropChange(p.Plants[i].CropType, TeamNimbus.CloudMeadow.Farm.CropStatus.Harvestable); LogBuffer.Add("Farm plot grown: " + index); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void ResetFarmPlot(int index) { try { var p = GameManager.Status.FarmStatus.Plots[index]; for (int i = 0; i < p.Plants.Length; i++) p.Plants[i].ResetToDirt(true); LogBuffer.Add("Farm plot reset: " + index); } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
+        public static void AssignMonsterToPlot(MonsterCharacterStats monster, int plotIndex, string roleName)
+        {
+            try
+            {
+                if (monster == null) return; var plot = GameManager.Status.FarmStatus.Plots[plotIndex]; var role = (TeamNimbus.CloudMeadow.Monsters.JobRole)Enum.Parse(typeof(TeamNimbus.CloudMeadow.Monsters.JobRole), roleName, true);
+                foreach (var existing in GameManager.Status.EnumerateWorkersAssignedToWorkable(plot.JobID)) if (existing != null && existing != monster && existing.ActiveJob.AssignedRole == role) existing.QuitJob();
+                if (monster.ActiveJob.IsWorking) monster.QuitJob(); monster.BeginJob(plot, role); LogBuffer.Add(monster.Name + " assigned to plot " + plotIndex + " / " + role);
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("AssignMonsterToPlot failed: " + e.Message); }
+        }
+        public static void QuitMonsterJob(MonsterCharacterStats monster) { try { if (monster != null) { monster.QuitJob(); LogBuffer.Add(monster.Name + " quit job"); } } catch (Exception e) { Plugin.Log.LogWarning(e.Message); } }
         public static bool Ready { get { return Application.isPlaying && GameManager.Instance != null && GameManager.IsGameStatusLoaded; } }
         public static bool VerboseDiagnosticsEnabled
         {
@@ -215,6 +875,118 @@ namespace CloudMeadow.CreativeMode
         public static void GiveEveryMonster()
         {
             try { TeamNimbus.CloudMeadow.Combat.DebugCheats.AddAllMonsters(Mathf.Max(GameManager.Status.ProtagonistStats.Level, 15)); LogBuffer.Add("Give all monsters"); } catch (Exception e) { Plugin.Log.LogWarning(e.ToString()); }
+        }
+
+        public static SexSceneData[] GetGalleryScenes()
+        {
+            try
+            {
+                if (GameManager.SexSceneLibrary == null) return new SexSceneData[0];
+                var list = new System.Collections.Generic.List<SexSceneData>();
+                foreach (var scene in GameManager.SexSceneLibrary.EnumerateAllScenes()) if (scene != null) list.Add(scene);
+                return list.ToArray();
+            }
+            catch { return new SexSceneData[0]; }
+        }
+
+        public static bool IsGallerySceneUnlocked(SexSceneData scene)
+        { try { return scene != null && SaveGameManager.IsSceneUnlocked(scene); } catch { return false; } }
+
+        public static void UnlockGalleryScene(SexSceneData scene)
+        {
+            if (scene == null) return;
+            try
+            {
+                var field = typeof(SaveGameManager).GetField("s_globalSettings", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                object settings = field != null ? field.GetValue(null) : null;
+                if (settings == null) throw new InvalidOperationException("Global gallery settings are not loaded");
+                var method = settings.GetType().GetMethod("UnlockSexScene", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (method == null) throw new MissingMethodException(settings.GetType().FullName, "UnlockSexScene");
+                method.Invoke(settings, new object[] { scene });
+                var save = typeof(SaveGameManager).GetMethod("SaveGlobalSettings", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (save != null) save.Invoke(null, null);
+                LogBuffer.Add("Gallery scene unlocked: " + GetGallerySceneName(scene));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("Unlock gallery scene failed: " + e); }
+        }
+
+        public static void LockGalleryScene(SexSceneData scene)
+        {
+            if (scene == null) return;
+            try
+            {
+                var managerField = typeof(SaveGameManager).GetField("s_globalSettings", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                object settings = managerField != null ? managerField.GetValue(null) : null; if (settings == null) throw new InvalidOperationException("Global settings unavailable");
+                var listField = settings.GetType().GetField("unlockedSexScenes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var list = listField != null ? listField.GetValue(settings) as System.Collections.IList : null; if (list == null) throw new MissingFieldException("unlockedSexScenes");
+                for (int i = list.Count - 1; i >= 0; i--) if (object.Equals(list[i], scene.UniqueID)) list.RemoveAt(i);
+                var save = typeof(SaveGameManager).GetMethod("SaveGlobalSettings", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic); if (save != null) save.Invoke(null, null);
+                LogBuffer.Add("Gallery scene locked: " + GetGallerySceneName(scene));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("LockGalleryScene failed: " + e.Message); }
+        }
+
+        public static string GetGallerySceneName(SexSceneData scene)
+        {
+            if (scene == null) return "(null)";
+            try
+            {
+                string asset = scene.AssetNameInBundle;
+                if (!string.IsNullOrEmpty(asset)) return asset;
+                return scene.FirstCharacterFilterFlags + " + " + scene.SecondCharacterFilterFlags;
+            }
+            catch { return scene.name; }
+        }
+        public static string GetGallerySceneDiagnostics(SexSceneData scene)
+        {
+            if (scene == null) return "Scene missing"; try { string bundle = scene.ResolveBundleName(); string root = UnityEngine.Application.streamingAssetsPath; string[] candidates = { System.IO.Path.Combine(root, bundle), System.IO.Path.Combine(root, bundle + ".bundle"), System.IO.Path.Combine(root, bundle + ".assetbundle") }; bool found = false; for (int i = 0; i < candidates.Length; i++) if (System.IO.File.Exists(candidates[i])) found = true; return "Characters: " + scene.FirstCharacterFilterFlags + " + " + scene.SecondCharacterFilterFlags + " | Bundle: " + bundle + " (" + (found ? "file found" : "managed/packed") + ") | Asset: " + scene.AssetNameInBundle; } catch (Exception e) { return "Scene diagnostics failed: " + e.Message; }
+        }
+        public static void PreviewGalleryScene(SexSceneData scene)
+        {
+            try { var managers = UnityEngine.Object.FindObjectsOfType<TeamNimbus.CloudMeadow.UI.SexSceneWindowManager>(); if (managers == null || managers.Length == 0) throw new InvalidOperationException("SexSceneWindowManager is not loaded in this scene"); managers[0].ShowDefaultSexScene(scene); LogBuffer.Add("Gallery preview: " + GetGallerySceneName(scene)); }
+            catch (Exception e) { Plugin.Log.LogWarning("PreviewGalleryScene failed: " + e.Message); LogBuffer.AddError("Gallery preview", e.Message, e.StackTrace); }
+        }
+
+        public static string[] GetCompatibilityChecks()
+        {
+            var result = new System.Collections.Generic.List<string>();
+            int missing = 0;
+            string[] types = {
+                "TeamNimbus.CloudMeadow.Managers.GameManager", "TeamNimbus.CloudMeadow.Persistence.SaveGameManager",
+                "TeamNimbus.CloudMeadow.Monsters.MonsterCharacterStats", "TeamNimbus.CloudMeadow.Story.QuestSystem.QuestInfo",
+                "TeamNimbus.CloudMeadow.UI.SexSceneDataLibrary"
+            };
+            var asm = typeof(GameManager).Assembly;
+            for (int i = 0; i < types.Length; i++) { bool ok = asm.GetType(types[i], false) != null; if (!ok) missing++; result.Add((ok ? "OK  " : "MISS  ") + types[i]); }
+            bool statusOk = typeof(GameManager).GetProperty("Status", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public) != null; if (!statusOk) missing++; result.Add((statusOk ? "OK" : "MISS") + "  GameManager.Status");
+            bool unlockOk = typeof(SaveGameManager).GetMethod("UnlockEverything", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public) != null; if (!unlockOk) missing++; result.Add((unlockOk ? "OK" : "MISS") + "  SaveGameManager.UnlockEverything");
+            var questStart = typeof(TeamNimbus.CloudMeadow.Story.QuestSystem.QuestManager).GetMethod("StartQuest", new[] { typeof(TeamNimbus.CloudMeadow.Story.QuestSystem.QuestInfo) }); bool questOk = questStart != null; if (!questOk) missing++; result.Add((questOk ? "OK" : "MISS") + "  QuestManager.StartQuest(QuestInfo)");
+            result.Insert(0, "Compatibility: " + (missing == 0 ? "COMPATIBLE" : missing <= 2 ? "PARTIAL" : "BROKEN") + " | Missing signatures: " + missing);
+            return result.ToArray();
+        }
+
+        public static string[] GetContentDiscoverySummary()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try { lines.Add("Species enum values: " + Enum.GetNames(typeof(FarmableSpecies)).Length); } catch { }
+            try { lines.Add("Item definitions: " + GetAllItemDefinitions().Length); } catch { }
+            try { lines.Add("Trait definitions: " + GetAllTraitDefinitions().Length); } catch { }
+            try { lines.Add("Quest definitions: " + GameApiQuest.GetAllQuests().Length); } catch { }
+            try { lines.Add("Gallery scenes: " + GetGalleryScenes().Length); } catch { }
+            return lines.ToArray();
+        }
+        public static string WriteCompatibilityReport(string path)
+        {
+            try
+            {
+                var lines = new System.Collections.Generic.List<string>(); lines.Add(GetCompatibilitySummary()); lines.AddRange(GetCompatibilityChecks());
+                lines.Add("FarmableSpecies=" + string.Join(",", Enum.GetNames(typeof(FarmableSpecies)))); lines.Add("SceneIDs=" + string.Join(",", Enum.GetNames(typeof(TeamNimbus.CloudMeadow.SceneIDs)))); lines.Add("Weather=" + string.Join(",", Enum.GetNames(typeof(Weather))));
+                if (Ready) { lines.Add("Quests=" + GameApiQuest.GetAllQuests().Length); lines.Add("Items=" + GetAllItemDefinitions().Length); lines.Add("Traits=" + GetAllTraitDefinitions().Length); lines.Add("Gallery=" + GetGalleryScenes().Length); }
+                string current = string.Join("\r\n", lines.ToArray()); string previousPath = path + ".previous"; string deltaPath = path + ".changes.txt";
+                if (System.IO.File.Exists(path)) { string old = System.IO.File.ReadAllText(path); if (!string.Equals(old, current, StringComparison.Ordinal)) { System.IO.File.WriteAllText(previousPath, old); var oldSet = new System.Collections.Generic.HashSet<string>(old.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)); var changes = new System.Collections.Generic.List<string>(); foreach (string line in lines) if (!oldSet.Contains(line)) changes.Add("NEW/CHANGED: " + line); System.IO.File.WriteAllLines(deltaPath, changes.ToArray()); } }
+                System.IO.File.WriteAllText(path, current); LogBuffer.Add("Compatibility report: " + path); return path;
+            }
+            catch (Exception e) { return "FAILED: " + e.Message; }
         }
 
         public static void AddMonster(string speciesName, int level)
@@ -553,10 +1325,13 @@ namespace CloudMeadow.CreativeMode
 
         // ===== Inventory helpers =====
         public static object[] GetInventoryEntries()
+        { return GetInventoryEntriesFrom(GameManager.Status.Inventory); }
+
+        public static object[] GetInventoryEntriesFrom(object inv)
         {
             try
             {
-                var inv = GameManager.Status.Inventory;
+                if (inv == null) return new object[0];
                 var list = new System.Collections.Generic.List<object>();
                 var seen = new System.Collections.Generic.HashSet<object>();
                 var t = inv.GetType();
@@ -581,6 +1356,26 @@ namespace CloudMeadow.CreativeMode
             return new object[0];
         }
 
+        public static object[] GetInventoryContainers()
+        {
+            try
+            {
+                var list = new System.Collections.Generic.List<object>(); var status = GameManager.Status;
+                if (status.Inventory != null) list.Add(status.Inventory); if (status.Storage != null && !list.Contains(status.Storage)) list.Add(status.Storage);
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                var fields = status.GetType().GetFields(flags); for (int i = 0; i < fields.Length; i++) { object v = null; try { v = fields[i].GetValue(status); } catch { } if (v is Inventory && !list.Contains(v)) list.Add(v); }
+                var sceneInventories = UnityEngine.Object.FindObjectsOfType<TeamNimbus.CloudMeadow.Inventory.InventoryMerchantBehaviour>();
+                for (int i = 0; i < sceneInventories.Length; i++) { object stock = null; try { stock = status.ResolveInventoryStock(sceneInventories[i]); } catch { } if (stock != null && !list.Contains(stock)) list.Add(stock); }
+                return list.ToArray();
+            }
+            catch { return new object[0]; }
+        }
+        public static string GetInventoryContainerName(object container)
+        {
+            try { if (object.ReferenceEquals(container, GameManager.Status.Inventory)) return "Player Inventory"; if (object.ReferenceEquals(container, GameManager.Status.Storage)) return "Farm Storage"; return container != null ? container.GetType().Name : "(missing)"; }
+            catch { return container != null ? container.GetType().Name : "(missing)"; }
+        }
+
         private static void AppendEntryEnumerable(System.Collections.Generic.List<object> list, System.Collections.Generic.HashSet<object> seen, object val)
         {
             if (val == null) return;
@@ -591,6 +1386,17 @@ namespace CloudMeadow.CreativeMode
                 var tn = it.GetType().FullName;
                 if (tn != null && (tn.IndexOf("Entry") >= 0 || tn.IndexOf("ItemEntry") >= 0) && seen.Add(it)) list.Add(it);
             }
+        }
+
+        public static string GetEntryInspectorSummary(object entry)
+        {
+            try
+            {
+                var def = GetEntryDefinition(entry) as BaseItemDefinition; object code = def != null ? (SafeProp(def, "Code") ?? SafeProp(def, "name")) : null;
+                object sell = entry != null ? (SafeProp(entry, "KoronaValueOfOne") ?? SafeProp(entry, "SellValue") ?? SafeProp(def, "SellValue")) : null;
+                return "Type: " + (entry != null ? entry.GetType().Name : "missing") + " | ID: " + (code ?? "unknown") + " | Qty: " + GetEntryQuantity(entry) + " | Quality: " + GetEntryQuality(entry) + " | Value: " + (sell ?? "n/a");
+            }
+            catch (Exception e) { return "Item inspection failed: " + e.Message; }
         }
 
         private static object CreateEntry(object def, int amount, int qualityIndex)
@@ -792,6 +1598,21 @@ namespace CloudMeadow.CreativeMode
             catch (Exception e) { Plugin.Log.LogWarning("SetEntryMaxQuality failed: " + e.Message); }
         }
 
+        public static void SetEntryQuantity(object entry, int quantity)
+        {
+            try
+            {
+                if (entry == null) return; if (quantity < 0) quantity = 0;
+                var t = entry.GetType();
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase;
+                var prop = t.GetProperty("Quantity", flags) ?? t.GetProperty("Count", flags) ?? t.GetProperty("Stack", flags) ?? t.GetProperty("Amount", flags);
+                if (prop != null && prop.CanWrite) { prop.SetValue(entry, Convert.ChangeType(quantity, prop.PropertyType), null); return; }
+                var field = t.GetField("Quantity", flags) ?? t.GetField("Count", flags) ?? t.GetField("Stack", flags) ?? t.GetField("Amount", flags);
+                if (field != null) field.SetValue(entry, Convert.ChangeType(quantity, field.FieldType));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("SetEntryQuantity failed: " + e.Message); }
+        }
+
         public static void SetAllInventoryEntriesMaxQuality()
         {
             try
@@ -989,6 +1810,8 @@ namespace CloudMeadow.CreativeMode
             }
             catch (Exception ex) { Plugin.Log.LogWarning("HatchAllEggs failed: " + ex.Message); }
         }
+        public static object GetEntryDefinitionForUI(object entry) { return GetEntryDefinition(entry); }
+        public static int GetEntryQuantityForUI(object entry) { return GetEntryQuantity(entry); }
 
         private static bool SetEggReady(object record)
         {
@@ -1904,6 +2727,51 @@ namespace CloudMeadow.CreativeMode
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetMonsterSpecies failed: " + e.Message); }
         }
+
+        public static string[] GetEggInspectorLines(object obj)
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            try
+            {
+                object egg = UnwrapEgg(obj); if (egg == null) return new[] { "Egg data missing" };
+                lines.Add("Runtime: " + egg.GetType().FullName + " | Host: " + (obj != null ? obj.GetType().Name : "none"));
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic; int shown = 0;
+                var props = egg.GetType().GetProperties(flags);
+                for (int i = 0; i < props.Length && shown < 14; i++) if (props[i].GetIndexParameters().Length == 0 && IsSimpleValueType(props[i].PropertyType)) { try { lines.Add(props[i].Name + ": " + props[i].GetValue(egg, null)); shown++; } catch { } }
+                var fields = egg.GetType().GetFields(flags);
+                for (int i = 0; i < fields.Length && shown < 20; i++) if (IsSimpleValueType(fields[i].FieldType)) { try { lines.Add(fields[i].Name + ": " + fields[i].GetValue(egg)); shown++; } catch { } }
+            }
+            catch (Exception e) { lines.Add("Egg inspection failed: " + e.Message); }
+            return lines.ToArray();
+        }
+        public static EggItemEntry ResolveEggEntry(object obj)
+        {
+            object current = obj; var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+            for (int depth = 0; depth < 5 && current != null; depth++)
+            {
+                var typed = current as EggItemEntry; if (typed != null) return typed;
+                string[] names = { "Egg", "Entry", "Item", "Value", "egg", "entry", "item" }; object next = null;
+                for (int i = 0; i < names.Length && next == null; i++) { var p = current.GetType().GetProperty(names[i], flags); try { if (p != null) next = p.GetValue(current, null); } catch { } var f = current.GetType().GetField(names[i], flags); try { if (next == null && f != null) next = f.GetValue(current); } catch { } }
+                if (object.ReferenceEquals(next, current)) break; current = next;
+            }
+            return null;
+        }
+        public static void SetEggParents(object obj, int first, int second)
+        {
+            try { var egg = ResolveEggEntry(obj); if (egg == null || first == second) return; var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic; typeof(EggItemEntry).GetField("firstParentID", flags).SetValue(egg, first); typeof(EggItemEntry).GetField("secondParentID", flags).SetValue(egg, second); LogBuffer.Add("Egg parents -> " + first + ", " + second); }
+            catch (Exception e) { Plugin.Log.LogWarning("SetEggParents failed: " + e.Message); }
+        }
+        public static void CopyEggToInventory(object obj)
+        {
+            try { var egg = ResolveEggEntry(obj); if (egg == null) return; var clone = new EggItemEntry((EggItemDefinition)egg.Definition, egg.MagicalSaturationAtCreation); SetEggParents(clone, egg.FirstParentID, egg.SecondParentID); GameManager.Status.Inventory.AddItemEntry(clone); LogBuffer.Add("Egg copied to player inventory: " + egg.DisplayName); }
+            catch (Exception e) { Plugin.Log.LogWarning("CopyEggToInventory failed: " + e.Message); }
+        }
+        public static void RerollEggCopyToInventory(object obj)
+        {
+            try { var egg = ResolveEggEntry(obj); if (egg == null) return; var clone = new EggItemEntry((EggItemDefinition)egg.Definition, UnityEngine.Random.Range(0, 101)); SetEggParents(clone, egg.FirstParentID, egg.SecondParentID); GameManager.Status.Inventory.AddItemEntry(clone); LogBuffer.Add("Rerolled egg copy added: " + egg.DisplayName); }
+            catch (Exception e) { Plugin.Log.LogWarning("RerollEggCopyToInventory failed: " + e.Message); }
+        }
+        private static bool IsSimpleValueType(Type type) { type = Nullable.GetUnderlyingType(type) ?? type; return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal); }
 
         private static void NormalizeMonsterAfterSpeciesSwap(MonsterCharacterStats monster, FarmableSpecies oldSpecies, Gender oldGender, FarmableSpecies targetSpecies)
         {

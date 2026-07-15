@@ -53,12 +53,24 @@
       <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\Cloud Meadow_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\Cloud Meadow_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
       <HintPath>..\\Cloud Meadow_Data\\Managed\\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
       <HintPath>..\Cloud Meadow_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>..\Cloud Meadow_Data\Managed\UnityEngine.JSONSerializeModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Game">
@@ -85,16 +97,11 @@
 
   <ItemGroup>
     <Compile Include="Plugin.cs" />
+    <Compile Include="CreativeEditorUGUI.cs" />
     <Compile Include="ReflectionUtil.cs" />
-    <Compile Include="UIOverlay.cs" />
-    <Compile Include="UIOverlay.Player.cs" />
-    <Compile Include="UIOverlay.Farm.cs" />
-    <Compile Include="UIOverlay.Inventory.cs" />
-    <Compile Include="UIOverlay.Cheats.cs" />
-    <Compile Include="UIOverlay.OverviewParty.cs" />
-    <Compile Include="UIOverlay.Quests.cs" />
     <Compile Include="GameApi.cs" />
     <Compile Include="GameApi.Quest.cs" />
+    <Compile Include="TransactionManager.cs" />
     <Compile Include="FarmPatches.cs" />
     <Compile Include="LogSink.cs" />
     <Compile Include="GameEventsListener.cs" />
