@@ -1,0 +1,161 @@
+╭─ Response ───────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+Ниже короткое резюме текущего состояния и дизайн-документ с теххарактеристиками проекта “Cloud Meadow Creative
+Mode”.
+
+Резюме текущего состояния
+
+ • Базовая платформа: BepInEx 5, Unity 2017.4 (Mono/.NET 3.5).
+ • Мод: “Cloud Meadow Creative Mode” (BepInEx плагин) совместим с рантаймом игры (отвязка от .NET 4+ API; C# 5).
+ • Возможности:
+    • Оверлей (F6), структурированные вкладки: Overview, Player, Party, Farm, Traits, All Roots, Cheats.
+    • Player:
+       • Редактирование: Name, Level, Gender (Male/Female).
+       • Просмотр LVL/HP/XP; Primary Stats (Physique, Stamina, Intuition, Swiftness) — редактируемые.
+    • Farm:
+       • Пресеты времени: 07:00, 14:00, 20:00 + произвольный Set.
+       • Список монстров с именем и гендером; удаление монстра.
+       • Primary Stats монстров (Physique/Stamina/Intuition/Swiftness) — редактируемые.
+       • Traits для монстра: список, Enabled (чек), Level (Set/Max).
+    • Unlock All Album:
+       • Кнопка и F7 — полная разблокировка галереи (SaveGameManager.UnlockEverything + обновление
+         AlbumWindowManager).
+    • All Roots:
+       • Полный дамп обнаруженных “корневых” объектов (для диагностики).
+ • Технически:
+    • Проект собран с TargetFrameworkVersion v3.5, NoStdLib=true, базы ссылок — DLL из Cloud Meadow_Data/Managed.
+    • Убран LINQ/современные фичи C#; отражение + безопасные вызовы (fallback’и).
+
+Дизайн-документ и ТТХ
+
+ 1 Цели и задачи
+
+ • Цель: предоставить интуитивное “креатив-меню” для Cloud Meadow с:
+    • Просмотром/редактированием ключевых статов ГГ и монстров.
+    • Удобными чит-функциями (время, сезон, погода, ресурсы, фарм, галерея).
+    • Быстрым доступом к диагностической информации (All Roots, Traits).
+ • Требования:
+    • Совместимость с рантаймом Unity 2017.4 / Mono 2.0 (.NET 3.5).
+    • Отказоустойчивые универсальные бинд-команды через рефлексию — там, где нет точного API.
+    • Сохранение UX — понятное меню без шумного дампа, где возможно.
+
+ 2 Архитектура мода
+
+ • Плагин BepInEx:
+    • Plugin.cs — точка входа, инициализация Harmony (зарезервировано), регистрация компонентов UIOverlay +
+      GameEventsListener.
+    • UIOverlay.cs — отрисовка оверлея через IMGUI (GUILayout).
+    • GameApi.cs — безопасные вызовы в игровые классы (GameManager/SaveGameManager/т.д.), адаптер для действий:
+      UnlockEverything, AddKorona, SetSeason/Weather, ClearBarn, GetActiveMonsters/RemoveMonster, SetTime и т.д.
+    • ReflectionUtil.cs — поисковые и дамп-утилиты для отражения.
+    • GameEventsListener.cs — подписка на базовые события (сезон/начало дня/часы), логирование.
+    • LogSink.cs — буфер лог-окна (правый верхний угол).
+ • Линки:
+    • mscorlib/System/System.Core/System.Xml — из Managed игры (NET 3.5).
+    • UnityEngine/UnityEngine.CoreModule/UnityEngine.UI/UnityEngine.IMGUIModule — из Managed.
+    • Game.dll/Common.dll — из Managed (официальные, не dnSpy-редакции).
+ • Конфиг/горячие клавиши:
+    • F6 — показать/скрыть оверлей.
+    • F7 — Unlock Gallery (All).
+    • F8 — Rescan.
+
+ 3 UX/Вкладки
+
+ • Overview:
+    • Быстрый статус (Корона/Шарды/Монстры/Сезон/Дата/Время/Уровень ГГ и т.д.).
+    • Обнаруженные “корни” (уникальные по типам).
+ • Player:
+    • Блок “Protagonist”: Name (Set), Level (Set), Gender (Male/Female), LVL/HP/XP, Primary Stats
+      (Physique/Stamina/Intuition/Swiftness) — строки с текущим значением и полем ввода + Set.
+    • Доп. кнопки: Korona +1000/+100000, Shards +10/+100.
+ • Party:
+    • Компактный список объектов/менеджеров party (до 5), диагностический дамп (краткий).
+    • Кнопки: Level party to 20, Recruit all L15.
+ • Farm:
+    • Обзор: Monsters on farm X / Capacity.
+    • Время: 07:00/14:00/20:00 + произвольный Set (HH:MM).
+    • Операции: Clear Barn, Give every monster.
+    • Список монстров:
+       • Имя, Gender.
+       • Кнопка Delete.
+       • Primary Stats (Physique/Stamina/Intuition/Swiftness) — редактируемые.
+       • Кнопка Traits — раскрывает список трейтов: Enabled (чек), Level (Set), Max.
+ • Traits:
+    • Поиск и диагностический дамп объектов “Trait”/“Status” (до 6).
+ • All Roots:
+    • Полный дамп _rootsAll — для диагностики.
+ • Cheats:
+    • Деньги/Шарды, сезоны/погода, ферма/монстры, Level-up, Unlock Gallery (All).
+
+ 4 Технические детали реализации
+
+ • Совместимость: C# 5, без языка 6+ (нет интерполяции, null-conditional).
+ • Работа со статами:
+    • Primary Stats и сопутствующие показатели ищутся в таком порядке: Property -> Field -> метод GetStatValue(key).
+    • Set: Property -> Field -> SetStatValue(key, value).
+    • Поддержка enum параметров для Get/SetStatValue: попытка использовать
+      TeamNimbus.CloudMeadow.Monsters.StatModifiers через Enum.Parse.
+ • Трейты:
+    • Поиск коллекции трейтов у монстра: перебор свойств/полей с “trait” в имени (IEnumerable, не string).
+    • Для каждого TraitInstance: читаются Name/TraitName/Id/Code, Level/CurrentLevel, MaxLevel/Cap/Max;
+      Enabled/IsEnabled/Active — универсально.
+    • Set/Max: через SetValue/SetStat методы; если есть API для AddTrait/RemoveTrait/Upgrade — подключим после
+      подтверждения.
+ • Логи:
+    • Верхний правый лог-окно (GUI Overlay).
+    • creative_startup.log — пишет шаги старта и исключения (опционально).
+    • Все действия пишутся в LogBuffer (короткие строки).
+
+ 5 Границы и ограничения (на текущем этапе)
+
+ • Категоризация Traits (Bloodlines / Universal) — нужна точная игровая модель (поле категории/источника или
+   библиотека перечисления).
+ • “Enabled” для трейтов — сделано универсально; для стопроцентной корректности требуется API (AddTrait/RemoveTrait)
+   и поле состояния.
+ • Параметры HP/XP — универсальная попытка; требуются точные имена для абсолютной точности.
+ • Swap Gender у монстров — будет добавлен (универсальная реализация: SwapGender или смена Gender).
+
+ 6 План работ (следующие шаги)
+
+ • Немедленные:
+    • Добавить кнопку “Swap Gender” рядом с Gender у каждого монстра.
+    • В окне Traits — добавить “уровень” с редактированием (уже есть) и доп. поведение для Enabled (если известны
+      API).
+ • По API от игры (рекомендуется):
+    • Player/Monster Stats — точные имена полей и методов (включая enum StatModifiers).
+    • Traits — структура TraitInstance (Name, Level, MaxLevel, Enabled), методы AddTrait/RemoveTrait/Upgrade,
+      категория (Bloodlines/Universal).
+    • Списки монстров и компаньонов: как получать, где хранятся.
+ • UI:
+    • Разделение Traits у монстра на две под-вкладки: Bloodlines и Universal.
+    • Показ нормализованных/производных параметров (например, Attack, Energy), если хотите, под соответствующие
+      stat’ы.
+
+ 7 Риски и совместимость
+
+ • Unity 2017.4 / Mono 3.5 — требует удерживать язык/библиотеки на низком уровне (C# 5, без LINQ в “опасных”
+   местах).
+ • Отражение — безопасно, но лучше заменить на прямые вызовы после предоставления API.
+
+ 8 Тестирование
+
+ • Проверки в рантайме:
+    • Player/Monsters stats: чтение и запись, проверка визуальных эффектов/боевых расчетов (по возможности).
+    • Traits: изменение уровней/включение не должны ломать состояние.
+    • Unlock Album: проверка во всех вкладках альбома (All Pairings/Hetero/Homo/NPC Sprite Sex).
+    • Время/погода/сезон: корректный переход состояний.
+
+  9 Документация
+
+ • Этот документ — базовый дизайн и ТТХ.
+ • В коде — комментарии в GameApi/UIOverlay/ReflectionUtil.
+ • creative_startup.log — служебный старт-лог.
+
+Вопросы/подтверждение
+
+ • Хотите, чтобы я сразу добавил Swap Gender у монстров?
+ • Могу внедрить временную группировку Traits (эвристически) на Bloodlines/Universal, а затем заменить на точную,
+   когда будут API.
+ • Если дадите имена для HP/XP/статов/трейтов/категорий — свяжу напрямую и уберу все эвристики.
+
+Готов продолжить: выбрать “быстрый” путь (универсальный Swap и временная группировка Traits) или сразу ждать ваши
+сигнатуры для “идеального” биндинга?

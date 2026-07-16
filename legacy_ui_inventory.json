@@ -1,0 +1,932 @@
+[
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 31,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+1k Korona\", GUILayout.Width(110))) GameApi.AddKorona(1000);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 32,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+100k\", GUILayout.Width(90))) GameApi.AddKorona(100000);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 33,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+1M\", GUILayout.Width(70))) GameApi.AddKorona(1000000);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 36,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+100 Shards\", GUILayout.Width(120))) GameApi.AddShards(100);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 37,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"All harvest & groceries\", GUILayout.Width(220))) GameApi.AddHarvestAndGroceries();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 44,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Unlock farm upgrades\", GUILayout.Width(200))) GameApi.UpgradeFarm();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 45,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Water all crops\", GUILayout.Width(160))) GameApi.WaterAllCrops();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 46,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Grow all crops\", GUILayout.Width(150))) GameApi.GrowAllCrops();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 49,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"HATCH ALL EGGS\", GUILayout.Width(200))) GameApi.HatchAllEggs();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 56,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Clear Barn\", GUILayout.Width(120))) GameApi.ClearBarn();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 57,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Give every monster (auto level)\", GUILayout.Width(260))) GameApi.GiveEveryMonster();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 60,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Recruit companions L10\", GUILayout.Width(220))) GameApi.RecruitAllCompanions(10);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 61,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"L15\", GUILayout.Width(60))) GameApi.RecruitAllCompanions(15);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 64,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Level companions to 20\", GUILayout.Width(230))) GameApi.LevelCompanions(20);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 65,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Level monsters to 20\", GUILayout.Width(220))) GameApi.LevelMonsters(20);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 68,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Level ALL to 30\", GUILayout.Width(170))) GameApi.LevelAll(30);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 69,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Level ALL to 60\", GUILayout.Width(170))) GameApi.LevelAll(60);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 70,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Upgrade abilities (party)\", GUILayout.Width(200))) GameApi.UpgradeAllAbilitiesForParty();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 74,
+    "Control": "TextField",
+    "Code": "_spawnMonsterSpecies = GUILayout.TextField(_spawnMonsterSpecies ?? \"Chimera\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 76,
+    "Control": "TextField",
+    "Code": "_spawnMonsterLevel = GUILayout.TextField(_spawnMonsterLevel ?? \"15\", GUILayout.Width(40));"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 77,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Add monster\", GUILayout.Width(120)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 83,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Add Chimera\", GUILayout.Width(120)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 94,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Max loyalty (all)\")) GameApi.MaxAllMonstersLoyalty();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 95,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Safe audit + fix\")) GameApi.RunSafeConsistencyAuditAndFix();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 97,
+    "Control": "Button",
+    "Code": "// if (GUILayout.Button(\"Set 99 Harvest Times Available\")) GameApi.SetExtraHarvestTimesForAll(99);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 99,
+    "Control": "Toggle",
+    "Code": "bool toggleUltra = GUILayout.Toggle(GameApi.UltraBreadEnabled, \"Ultra Bread (toggle)\");"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 106,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Win Combat\", GUILayout.Width(140))) GameApi.WinCombat();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 107,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"God Mode (toggle)\", GUILayout.Width(180))) GameApi.ToggleGodMode();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 110,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(GameApi.NoClipEnabled ? \"No Clip: ON\" : \"No Clip: OFF\", GUILayout.Width(160))) GameApi.ToggleNoClip();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 111,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Speed x10\", GUILayout.Width(110))) GameApi.SetSpeedMultiplier(10f);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 112,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Speed x1\", GUILayout.Width(100))) GameApi.SetSpeedMultiplier(1f);"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 118,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Unlock Gallery (All)\")) GameApi.UnlockAllGallery();"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 120,
+    "Control": "Toggle",
+    "Code": "bool verboseDiagNew = GUILayout.Toggle(verboseDiag, \"Verbose diagnostics\");"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 133,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 155,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(string.IsNullOrEmpty(_chimeraVariantName) ? \"Select\" : _chimeraVariantName, GUILayout.Width(180)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 161,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(_chimeraLevelValue.ToString(), GUILayout.Width(80)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 172,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(variants[i], GUILayout.Width(250)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 185,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(levels[j].ToString(), GUILayout.Width(100)))"
+  },
+  {
+    "File": "UIOverlay.Cheats.cs",
+    "Line": 194,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Spawn\", GUILayout.Width(120)))"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 56,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Overview\", \"Overview\", GUI.skin.button)) _activeTab = \"Overview\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 57,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Player\", \"Player\", GUI.skin.button)) _activeTab = \"Player\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 58,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Farm\", \"Farm\", GUI.skin.button)) _activeTab = \"Farm\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 59,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Inventory\", \"Inventory\", GUI.skin.button)) _activeTab = \"Inventory\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 60,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Quests\", \"Quests\", GUI.skin.button)) _activeTab = \"Quests\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 61,
+    "Control": "Toggle",
+    "Code": "if (GUILayout.Toggle(_activeTab == \"Cheats\", \"Cheats\", GUI.skin.button)) _activeTab = \"Cheats\";"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 63,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Unlock Gallery (F7)\", GUILayout.Width(170))) GameApi.UnlockAllGallery();"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 89,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(_logCollapsed ? \"Expand\" : \"Collapse\", GUILayout.Width(70))) _logCollapsed = !_logCollapsed;"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 188,
+    "Control": "TextField",
+    "Code": "edit = GUILayout.TextField(edit, GUILayout.Width(80));"
+  },
+  {
+    "File": "UIOverlay.cs",
+    "Line": 190,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set\", GUILayout.Width(50)))"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 68,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"07:00\", GUILayout.Width(60))) GameApi.SetTime(7, 0);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 69,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"14:00\", GUILayout.Width(60))) GameApi.SetTime(14, 0);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 70,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"20:00\", GUILayout.Width(60))) GameApi.SetTime(20, 0);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 79,
+    "Control": "TextField",
+    "Code": "_timeYear = GUILayout.TextField(_timeYear ?? \"1\", GUILayout.Width(50));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 82,
+    "Control": "TextField",
+    "Code": "_timeDay = GUILayout.TextField(_timeDay, GUILayout.Width(40));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 84,
+    "Control": "TextField",
+    "Code": "_timeHH = GUILayout.TextField(_timeHH, GUILayout.Width(30));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 86,
+    "Control": "TextField",
+    "Code": "_timeMM = GUILayout.TextField(_timeMM, GUILayout.Width(30));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 87,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Apply\", GUILayout.Width(60)))"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 98,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Spring\")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Spring);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 99,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Summer\")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Summer);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 100,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Autumn\")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Autumn);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 101,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Winter\")) GameApi.SetSeason(TeamNimbus.CloudMeadow.Season.Winter);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 104,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Clear\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Clear);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 105,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Rain\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Rain);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 106,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Storm\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Storm);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 107,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Snow\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Snow);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 108,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Blazing Heat\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.BlazingHeat);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 109,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Falling Leaves\")) GameApi.SetWeather(TeamNimbus.CloudMeadow.Weather.Leafs);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 129,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Change\", GUILayout.Width(70))) { _monsterTypeWindow[m] = true; _monsterSelectedSpecies[m] = row.Species; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 132,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Variant\", GUILayout.Width(70))) { _monsterChimeraWindow[m] = !_monsterChimeraWindow.ContainsKey(m) || !_monsterChimeraWindow[m]; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 135,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Swap\", GUILayout.Width(60))) GameApi.SwapMonsterGender(m);"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 136,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Delete\", GUILayout.Width(70))) { GameApi.RemoveMonster(m); MarkFarmCacheDirty(); GUILayout.EndHorizontal(); GUILayout.EndVertical(); continue; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 137,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Traits\", GUILayout.Width(70))) { _monsterTraitsWindow[m] = _monsterTraitsWindow.ContainsKey(m) && _monsterTraitsWindow[m] ? false : true; if (!_monsterTraitsWindow[m]) InvalidateMonsterTraitPopupCache(m); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 140,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Change\", GUILayout.Width(70))) { _monsterPatternWindow[m] = true; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 149,
+    "Control": "Toggle",
+    "Code": "bool newFold = GUILayout.Toggle(_monsterStatsFoldout[m], \"Stats\", GUILayout.Width(60));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 167,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set 110\", GUILayout.Width(70))) { GameApi.SetMonsterLoyalty(m, 110); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 168,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set 50\", GUILayout.Width(70))) { GameApi.SetMonsterLoyalty(m, 50); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 173,
+    "Control": "Toggle",
+    "Code": "bool newIsDry = GUILayout.Toggle(isDry, \"Dry\", GUILayout.Width(80));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 176,
+    "Control": "Toggle",
+    "Code": "bool newInf = GUILayout.Toggle(infertile, \"Infertile\", GUILayout.Width(100));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 179,
+    "Control": "Toggle",
+    "Code": "bool newIsLoyal = GUILayout.Toggle(isLoyal, \"Is Loyal\", GUILayout.Width(100));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 232,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) { _monsterPatternWindow[monster] = false; GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 243,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Select\", GUILayout.Width(60))) { GameApi.SetMonsterPigment(monster, name); _monsterPatternWindow[monster] = false; MarkFarmCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 260,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) { _monsterTypeWindow[monster] = false; GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 271,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Select\", GUILayout.Width(60))) { GameApi.SetMonsterSpecies(monster, s); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); _monsterTypeWindow[monster] = false; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 283,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) { _monsterChimeraWindow[monster] = false; GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 294,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Apply\", GUILayout.Width(70)))"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 314,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Add Trait\", GUILayout.Width(80))) { _monsterAddTraitWindow[monster] = true; RefreshMonsterTraitPopupCache(monster); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 315,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) { _monsterTraitsWindow[monster] = false; InvalidateMonsterTraitPopupCache(monster); GUILayout.EndHorizontal(); GUILayout.EndVertical(); return; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 368,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Del\", GUILayout.Width(40))) { GameApi.RemoveTraitFromMonster(monster, tr); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); GUILayout.EndHorizontal(); continue; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 374,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Max\", GUILayout.Width(50))) { GameApi.MaxTraitGrade(tr); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 378,
+    "Control": "TextField",
+    "Code": "edit = GUILayout.TextField(edit, GUILayout.Width(40));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 380,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set\", GUILayout.Width(40))) { int nv; if (int.TryParse(edit, out nv)) { GameApi.SetTraitGrade(tr, nv); InvalidateMonsterTraitPopupCache(monster); MarkFarmCacheDirty(); } }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 391,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) { _monsterAddTraitWindow[monster] = false; InvalidateMonsterTraitPopupCache(monster); GUIUtility.ExitGUI(); return; }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 404,
+    "Control": "TextField",
+    "Code": "filter = GUILayout.TextField(filter, GUILayout.Width(200));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 408,
+    "Control": "TextField",
+    "Code": "gradeEdit = GUILayout.TextField(gradeEdit, GUILayout.Width(40));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 410,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set 1\", GUILayout.Width(50))) _traitLevelEdits[monster] = \"1\";"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 411,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set 5\", GUILayout.Width(50))) _traitLevelEdits[monster] = \"5\";"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 450,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Export Report\", GUILayout.Width(140)))"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 458,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(100))) { _monsterAddTraitWindow[monster] = false; InvalidateMonsterTraitPopupCache(monster); }"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 492,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(replaceMode ? \"Set\" : \"Add\", GUILayout.Width(80)))"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 545,
+    "Control": "Toggle",
+    "Code": "bool newActive = GUILayout.Toggle(active, tab, GUI.skin.button, GUILayout.Width(95));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 559,
+    "Control": "Toggle",
+    "Code": "bool newActive2 = GUILayout.Toggle(active2, src, GUI.skin.button, GUILayout.Width(90));"
+  },
+  {
+    "File": "UIOverlay.Farm.cs",
+    "Line": 562,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Reset\", GUILayout.Width(60))) _addTraitSourceFilter[monster] = \"All\";"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 33,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Refresh\", GUILayout.Width(80))) { _allItemDefs = null; MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 35,
+    "Control": "TextField",
+    "Code": "_addItemFilter = GUILayout.TextField(_addItemFilter ?? \"\", GUILayout.Width(200));"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 36,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Apply\", GUILayout.Width(70))) { /* filter is reactive */ }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 37,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Add Item\", GUILayout.Width(100))) { _showAddItem = true; if (_allItemDefs == null) _allItemDefs = GameApi.GetAllItemDefinitions(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 38,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Get All Items\", GUILayout.Width(140))) { GameApi.AddAllItems(1, 1); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 39,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"MAX ALL QUALITY\", GUILayout.Width(150))) { GameApi.SetAllInventoryEntriesMaxQuality(); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 65,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+1\", GUILayout.Width(40))) { GameApi.AdjustEntryQuantity(row.Entry, 1); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 66,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+10\", GUILayout.Width(50))) { GameApi.AdjustEntryQuantity(row.Entry, 10); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 67,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set Max Quality\", GUILayout.Width(120))) { GameApi.SetEntryMaxQuality(row.Entry); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 140,
+    "Control": "Toggle",
+    "Code": "bool newActive = GUILayout.Toggle(active, cat, GUI.skin.button, GUILayout.Width(90));"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 144,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Reset\", GUILayout.Width(60))) _itemCategoryFilter = \"All\";"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 156,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(70))) _showAddItem = false;"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 160,
+    "Control": "TextField",
+    "Code": "_addItemFilter = GUILayout.TextField(_addItemFilter ?? \"\", GUILayout.Width(200));"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 161,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Reload\", GUILayout.Width(70))) _allItemDefs = GameApi.GetAllItemDefinitions();"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 185,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+1\", GUILayout.Width(40))) { GameApi.AddItemByDefinition(def, 1, 1); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Inventory.cs",
+    "Line": 186,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+10\", GUILayout.Width(50))) { GameApi.AddItemByDefinition(def, 10, 1); MarkInventoryCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.OverviewParty.cs",
+    "Line": 47,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Level party to 20\")) GameApi.LevelCompanions(20);"
+  },
+  {
+    "File": "UIOverlay.OverviewParty.cs",
+    "Line": 48,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Recruit all L15\")) GameApi.RecruitAllCompanions(15);"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 23,
+    "Control": "TextField",
+    "Code": "_editName = GUILayout.TextField(_editName, GUILayout.Width(180));"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 24,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set\", GUILayout.Width(50))) TrySetMember(p, \"Name\", _editName);"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 30,
+    "Control": "TextField",
+    "Code": "_editLevel = GUILayout.TextField(_editLevel, GUILayout.Width(80));"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 31,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set\", GUILayout.Width(50)))"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 50,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Male\", GUILayout.Width(60))) GameApi.SetProtagonistGender(\"Male\");"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 51,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Female\", GUILayout.Width(60))) GameApi.SetProtagonistGender(\"Female\");"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 79,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+1000\", GUILayout.Width(60))) GameApi.AddKorona(1000);"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 80,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+100000\", GUILayout.Width(80))) GameApi.AddKorona(100000);"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 85,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+10\", GUILayout.Width(60))) GameApi.AddShards(10);"
+  },
+  {
+    "File": "UIOverlay.Player.cs",
+    "Line": 86,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"+100\", GUILayout.Width(60))) GameApi.AddShards(100);"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 73,
+    "Control": "Toggle",
+    "Code": "bool newOpen = GUILayout.Toggle(open, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 77,
+    "Control": "Button",
+    "Code": "GUILayout.Button(\"Safe Jump To\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 78,
+    "Control": "Button",
+    "Code": "GUILayout.Button(\"Set this stage\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 88,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Dump Active\", GUILayout.Width(110)))"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 99,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Refresh\", GUILayout.Width(90))) { _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 100,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Show Active\", GUILayout.Width(110))) { _showActiveOnly = true; _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 101,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Show All\", GUILayout.Width(90))) { _showActiveOnly = false; _questsDirty = true; GameApiQuest.MarkQuestCacheDirty(); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 145,
+    "Control": "Toggle",
+    "Code": "bool newOpen2 = GUILayout.Toggle(open2, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 149,
+    "Control": "Button",
+    "Code": "GUILayout.Button(\"Set this stage\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 165,
+    "Control": "Toggle",
+    "Code": "bool newOpen = GUILayout.Toggle(open, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 169,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set this stage\", GUILayout.Width(120))) { GameApiQuest.SetQuestStage(info); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 182,
+    "Control": "Toggle",
+    "Code": "bool sNewOpen = GUILayout.Toggle(sOpen, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 185,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Plan\", GUILayout.Width(60))) { var plan = GameApiQuest.PlanSafeJump(info, step); ShowPlanPopup(plan); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 186,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Safe Jump To\", GUILayout.Width(100))) { GameApiQuest.SafeJumpTo(info, step); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 187,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set this stage\", GUILayout.Width(120))) { GameApiQuest.SetQuestStage(info, step); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 212,
+    "Control": "Toggle",
+    "Code": "bool newOpen = GUILayout.Toggle(open, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 215,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set this stage\", GUILayout.Width(120))) { GameApiQuest.SetQuestStage(info); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 228,
+    "Control": "Toggle",
+    "Code": "bool sNewOpen = GUILayout.Toggle(sOpen, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 231,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Plan\", GUILayout.Width(60))) { var plan = GameApiQuest.PlanSafeJump(info, step); ShowPlanPopup(plan); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 232,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Safe Jump To\", GUILayout.Width(100))) { GameApiQuest.SafeJumpTo(info, step); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 233,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Set this stage\", GUILayout.Width(120))) { GameApiQuest.SetQuestStage(info, step); }"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 261,
+    "Control": "Toggle",
+    "Code": "bool newOpen2 = GUILayout.Toggle(open2, \"\", GUILayout.Width(18));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 265,
+    "Control": "Button",
+    "Code": "GUILayout.Button(\"Safe Jump To\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 266,
+    "Control": "Button",
+    "Code": "GUILayout.Button(\"Set this stage\", GUILayout.Width(120));"
+  },
+  {
+    "File": "UIOverlay.Quests.cs",
+    "Line": 286,
+    "Control": "Button",
+    "Code": "if (GUILayout.Button(\"Close\", GUILayout.Width(60))) _showPlan = false;"
+  }
+]

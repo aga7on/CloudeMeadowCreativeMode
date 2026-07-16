@@ -1,0 +1,124 @@
+using UnityEngine;
+
+namespace CloudMeadow.CreativeMode
+{
+    internal partial class UIOverlay
+    {
+        private string _editName = null;
+        private string _editLevel = null;
+        private System.Collections.Generic.Dictionary<string, string> _editStats = new System.Collections.Generic.Dictionary<string, string>();
+
+        private void DrawPlayerUI()
+        {
+            try
+            {
+                var s = TeamNimbus.CloudMeadow.Managers.GameManager.Status;
+                var p = s.ProtagonistStats;
+                GUILayout.Label("Protagonist");
+                GUILayout.BeginVertical(GUI.skin.box);
+                // Name
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Name:", GUILayout.Width(60));
+                if (_editName == null) _editName = p.Name;
+                _editName = GUILayout.TextField(_editName, GUILayout.Width(180));
+                if (GUILayout.Button("Set", GUILayout.Width(50))) TrySetMember(p, "Name", _editName);
+                GUILayout.EndHorizontal();
+                // Level (clamped to GameManager.MaxLevel)
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Level:", GUILayout.Width(60));
+                if (_editLevel == null) _editLevel = p.Level.ToString();
+                _editLevel = GUILayout.TextField(_editLevel, GUILayout.Width(80));
+                if (GUILayout.Button("Set", GUILayout.Width(50)))
+                {
+                    int lvl;
+                    if (int.TryParse(_editLevel, out lvl))
+                    {
+                        try
+                        {
+                            int maxLvl = TeamNimbus.CloudMeadow.Managers.GameManager.MaxLevel;
+                            if (lvl < 1) lvl = 1; if (lvl > maxLvl) lvl = maxLvl;
+                            TrySetMember(p, "Level", lvl);
+                        }
+                        catch { TrySetMember(p, "Level", lvl); }
+                    }
+                }
+                GUILayout.Label(p.IsMaxLevel ? "(Max)" : "", GUILayout.Width(60));
+                GUILayout.EndHorizontal();
+                // Gender
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Gender:", GUILayout.Width(60));
+                if (GUILayout.Button("Male", GUILayout.Width(60))) GameApi.SetProtagonistGender("Male");
+                if (GUILayout.Button("Female", GUILayout.Width(60))) GameApi.SetProtagonistGender("Female");
+                GUILayout.Label("Current: " + p.Gender, GUILayout.Width(120));
+                GUILayout.EndHorizontal();
+                // LVL/HP/XP
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("LVL " + p.Level, GUILayout.Width(70));
+                GUILayout.Label("HP: " + GetPlayerHPLabel(p), GUILayout.Width(180));
+                GUILayout.Label("XP: " + GetPlayerXPLabel(p), GUILayout.Width(180));
+                GUILayout.Label("XP Next: " + p.XPNeededForNextLevel, GUILayout.Width(120));
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Stat Points: " + ReadInt(p, new string[] { "NumStatPoints", "numStatPoints" }), GUILayout.Width(180));
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+
+                GUILayout.Space(5);
+                GUILayout.Label("Primary Stats");
+                GUILayout.Label("Note: Primary stats are limited by Growth + Max Custom (non-monster cap is 500 custom). Values set here respect those caps.", GUI.skin.box);
+                GUILayout.BeginVertical(GUI.skin.box);
+                StatRow("Physique", p, "Physique");
+                StatRow("Stamina", p, "Stamina");
+                StatRow("Intuition", p, "Intuition");
+                StatRow("Swiftness", p, "Swiftness");
+                GUILayout.EndVertical();
+
+                GUILayout.Space(5);
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label("Korona: " + s.KoronaBalance, GUILayout.Width(160));
+                if (GUILayout.Button("+1000", GUILayout.Width(60))) GameApi.AddKorona(1000);
+                if (GUILayout.Button("+100000", GUILayout.Width(80))) GameApi.AddKorona(100000);
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                GUILayout.Label("Shards: " + s.NumUpgradeShards, GUILayout.Width(160));
+                if (GUILayout.Button("+10", GUILayout.Width(60))) GameApi.AddShards(10);
+                if (GUILayout.Button("+100", GUILayout.Width(60))) GameApi.AddShards(100);
+                GUILayout.EndHorizontal();
+            }
+            catch (System.Exception e)
+            {
+                GUILayout.Label("Player UI error: " + e.Message);
+            }
+        }
+
+        private string GetPlayerHPLabel(object statsObj)
+        {
+            try
+            {
+                var cur = ReadStat(statsObj, new string[] { "currentHP", "CurrentHP", "HPCurrent", "HP" });
+                var max = ReadStat(statsObj, new string[] { "MaxHP", "HPMax", "MaxHealth" });
+                return string.Format("{0}/{1}", cur != null ? Mathf.RoundToInt(System.Convert.ToSingle(cur)).ToString() : "-", max != null ? Mathf.RoundToInt(System.Convert.ToSingle(max)).ToString() : "-");
+            }
+            catch
+            {
+                return "-/-";
+            }
+        }
+
+        private string GetPlayerXPLabel(object statsObj)
+        {
+            try
+            {
+                var xp = ReadStat(statsObj, new string[] { "XPSinceLastLevel", "CurrentXP", "XP", "Experience" });
+                if (xp == null) return "-";
+                return Mathf.RoundToInt(System.Convert.ToSingle(xp)).ToString();
+            }
+            catch
+            {
+                return "-";
+            }
+        }
+
+    }
+}

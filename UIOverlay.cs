@@ -1,0 +1,531 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using TeamNimbus.CloudMeadow;
+
+namespace CloudMeadow.CreativeMode
+{
+    internal partial class UIOverlay : MonoBehaviour
+    {
+        // Core state
+        private bool _visible;
+        private Rect _windowRect = new Rect(50, 50, 1160, 720);
+        private Vector2 _scroll;
+        private Vector2 _logScroll;
+        private bool _logCollapsed = false;
+        private string _activeTab = "Overview";
+
+        // Roots for diagnostics/overview
+        private List<object> _rootsAll = new List<object>();
+        private List<object> _roots = new List<object>();
+        private string _filter = string.Empty;
+        private int _maxDepth = 2;
+        private string _lastSceneName = string.Empty;
+        private object _lastStatusRef;
+        private int _lastDateStamp = int.MinValue;
+
+        private void Start()
+        {
+            Rescan();
+        }
+
+        private void Update()
+        {
+            CheckForGlobalContextChanges();
+            if (Input.GetKeyDown(Plugin.RefreshScanKey.Value))
+            {
+                Rescan();
+            }
+            if (Input.GetKeyDown(Plugin.UnlockGalleryKey.Value))
+            {
+                GameApi.UnlockAllGallery();
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (!_visible) return;
+            GUI.depth = 0;
+            _windowRect = GUILayout.Window(0xC10AD, _windowRect, DrawWindow, "Creative Mode (F6)");
+            DrawLogOverlay();
+        }
+
+        private void DrawWindow(int id)
+        {
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Toggle(_activeTab == "Overview", "Overview", GUI.skin.button)) _activeTab = "Overview";
+            if (GUILayout.Toggle(_activeTab == "Player", "Player", GUI.skin.button)) _activeTab = "Player";
+            if (GUILayout.Toggle(_activeTab == "Farm", "Farm", GUI.skin.button)) _activeTab = "Farm";
+            if (GUILayout.Toggle(_activeTab == "Inventory", "Inventory", GUI.skin.button)) _activeTab = "Inventory";
+            if (GUILayout.Toggle(_activeTab == "Quests", "Quests", GUI.skin.button)) _activeTab = "Quests";
+            if (GUILayout.Toggle(_activeTab == "Cheats", "Cheats", GUI.skin.button)) _activeTab = "Cheats";
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Unlock Gallery (F7)", GUILayout.Width(170))) GameApi.UnlockAllGallery();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(5);
+            _scroll = GUILayout.BeginScrollView(_scroll);
+            if (_activeTab == "Overview") DrawOverview();
+            else if (_activeTab == "Player") DrawPlayerUI();
+            else if (_activeTab == "Party") DrawPartyUI();
+            else if (_activeTab == "Farm") DrawFarmUI();
+            else if (_activeTab == "Inventory") DrawInventoryUI();
+            else if (_activeTab == "Quests") DrawQuestsUI();
+            else if (_activeTab == "Cheats") DrawCheats();
+            GUILayout.EndScrollView();
+
+            GUI.DragWindow(new Rect(0, 0, 10000, 25));
+        }
+
+        private void DrawLogOverlay()
+        {
+            const int width = 360;
+            const int height = 220;
+            var rect = new Rect(Screen.width - width - 10, 10, width, height);
+            GUILayout.BeginArea(rect, GUI.skin.box);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Log", GUILayout.Width(40));
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(_logCollapsed ? "Expand" : "Collapse", GUILayout.Width(70))) _logCollapsed = !_logCollapsed;
+            GUILayout.EndHorizontal();
+            if (!_logCollapsed)
+            {
+                _logScroll = GUILayout.BeginScrollView(_logScroll);
+                var lines = LogBuffer.Snapshot();
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    GUILayout.Label(lines[i]);
+                }
+                GUILayout.EndScrollView();
+            }
+            GUILayout.EndArea();
+        }
+
+        private void Rescan()
+        {
+            _rootsAll = ReflectionUtil.CollectGameRoots();
+            var byType = new Dictionary<Type, object>();
+            for (int i = 0; i < _rootsAll.Count; i++)
+            {
+                var o = _rootsAll[i];
+                if (o == null) continue;
+                var t = o.GetType();
+                if (!byType.ContainsKey(t)) byType[t] = o;
+            }
+            _roots = new List<object>(byType.Values);
+            Plugin.Log.LogInfo("CreativeMode rescan: " + _roots.Count + " roots found");
+            LogBuffer.Add("Rescanned scene objects");
+        }
+
+        internal void OpenTab(string tab)
+        {
+            _activeTab = tab;
+            _visible = true;
+            Rescan();
+        }
+
+        private void CheckForGlobalContextChanges()
+        {
+            try
+            {
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? string.Empty;
+                object statusRef = TeamNimbus.CloudMeadow.Managers.GameManager.IsGameStatusLoaded ? (object)TeamNimbus.CloudMeadow.Managers.GameManager.Status : null;
+                int dateStamp = int.MinValue;
+                if (statusRef != null)
+                {
+                    var dt = TeamNimbus.CloudMeadow.Managers.GameManager.Status.CurrentDateTime;
+                    dateStamp = dt.Year * 1000 + Convert.ToInt32(dt.Season) * 100 + dt.Day;
+                }
+
+                if (!string.Equals(sceneName, _lastSceneName, StringComparison.Ordinal) ||
+                    !object.ReferenceEquals(statusRef, _lastStatusRef) ||
+                    dateStamp != _lastDateStamp)
+                {
+                    ResetTransientUiCaches();
+                    _lastSceneName = sceneName;
+                    _lastStatusRef = statusRef;
+                    _lastDateStamp = dateStamp;
+                }
+            }
+            catch { }
+        }
+
+        private void ResetTransientUiCaches()
+        {
+            try
+            {
+                _statEdits.Clear();
+                _traitLevelEdits.Clear();
+                _monsterAddTraitWindow.Clear();
+                _addTraitFilter.Clear();
+                _addTraitPopupRect.Clear();
+                _addTraitScroll.Clear();
+                _addTraitDropdownOpen.Clear();
+                _addTraitSelectedIndex.Clear();
+                _cacheBloodlineBySpecies.Clear();
+                _cacheUniversalDefs.Clear();
+                _cacheOwnedTraitCodes.Clear();
+                _cacheSpeciesTraitDefsStatic.Clear();
+                _cacheStatLimitTraitDefsStatic.Clear();
+                _cacheBloodlineTraitDefsStatic.Clear();
+                _cacheUniversalTraitDefsStatic = null;
+                _allItemDefs = null;
+            }
+            catch { }
+        }
+
+        // ===== Shared helpers (used across partial tabs) =====
+        // Inline stat editor storage (shared for Player/Farm)
+        private Dictionary<string, string> _statEdits = new Dictionary<string, string>();
+        
+        private void StatRow(string label, object statsObj, string statKey)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label + ": " + GetStatDisplayLabel(statsObj, statKey), GUILayout.Width(330));
+            string key = label + "@" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(statsObj).ToString();
+            string edit;
+            if (!_statEdits.TryGetValue(key, out edit)) edit = "";
+            edit = GUILayout.TextField(edit, GUILayout.Width(80));
+            _statEdits[key] = edit;
+            if (GUILayout.Button("Set", GUILayout.Width(50)))
+            {
+                int iv; float fv;
+                // Safe pathway for primary stats to respect game caps
+                if (string.Equals(statKey, "Physique", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Stamina", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Intuition", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(statKey, "Swiftness", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(edit, out iv))
+                    {
+                        try { SetPrimaryStatSafe(statsObj, statKey, iv); }
+                        catch { TrySetStat(statsObj, statKey, iv); }
+                    }
+                }
+                else
+                {
+                    if (int.TryParse(edit, out iv)) TrySetStat(statsObj, statKey, iv);
+                    else if (float.TryParse(edit, out fv)) TrySetStat(statsObj, statKey, fv);
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        private object ReadStat(object target, string[] keys)
+        {
+            try
+            {
+                var t = target.GetType();
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var k = keys[i];
+                    var prop = t.GetProperty(k, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                    if (prop != null) return prop.GetValue(target, null);
+                    var field = t.GetField(k, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                    if (field != null) return field.GetValue(target);
+                    var v = InvokeGetStatValue(target, k);
+                    if (v != null) return v;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private object InvokeGetStatValue(object target, string key)
+        {
+            try
+            {
+                var t = target.GetType();
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var methods = t.GetMethods(flags);
+                int i;
+                for (i = 0; i < methods.Length; i++)
+                {
+                    var m = methods[i];
+                    if (!string.Equals(m.Name, "GetStatValue", StringComparison.Ordinal)) continue;
+                    var ps = m.GetParameters();
+                    if (ps.Length == 1)
+                    {
+                        var p = ps[0];
+                        if (p.ParameterType == typeof(string)) return m.Invoke(target, new object[] { (object)key });
+                        var ev = ResolveStatModifierEnumValue(key);
+                        if (ev != null && p.ParameterType.IsEnum && ev.GetType() == p.ParameterType)
+                        {
+                            return m.Invoke(target, new object[] { ev });
+                        }
+                    }
+                    else if (ps.Length == 2)
+                    {
+                        var p0 = ps[0];
+                        var p1 = ps[1];
+                        var ev = ResolveStatModifierEnumValue(key);
+                        var cond = ResolveEnumValue("TeamNimbus.CloudMeadow.ActiveModConditions", "None") ?? ResolveEnumValue("ActiveModConditions", "None");
+                        if (ev != null && cond != null && p0.ParameterType.IsEnum && p1.ParameterType.IsEnum && ev.GetType() == p0.ParameterType && cond.GetType() == p1.ParameterType)
+                        {
+                            return m.Invoke(target, new object[] { ev, cond });
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private object ResolveEnumValue(string typeName, string valueName)
+        {
+            try
+            {
+                var asms = AppDomain.CurrentDomain.GetAssemblies();
+                for (int a = 0; a < asms.Length; a++)
+                {
+                    var t = asms[a].GetType(typeName, false, true);
+                    if (t != null && t.IsEnum)
+                    {
+                        try { return Enum.Parse(t, valueName, true); } catch { }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private int ReadInt(object target, string[] keys)
+        {
+            object v = ReadStat(target, keys);
+            try { if (v == null) return 0; return Convert.ToInt32(v); } catch { return 0; }
+        }
+        private string ReadString(object target, string[] keys)
+        {
+            object v = ReadStat(target, keys);
+            return v != null ? v.ToString() : "-";
+        }
+
+        private void TrySetStat(object target, string statKey, object value)
+        {
+            try
+            {
+                var t = target.GetType();
+                var prop = t.GetProperty(statKey, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (prop != null && prop.CanWrite) { prop.SetValue(target, value, null); return; }
+                var field = t.GetField(statKey, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (field != null) { field.SetValue(target, value); return; }
+                // Prefer IncreasePrimaryStatCustomValue for safe edits on primary stats
+                if (IsPrimaryStatKey(statKey))
+                {
+                    var method = t.GetMethod("IncreasePrimaryStatCustomValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (method != null)
+                    {
+                        int targetVal = Convert.ToInt32(value);
+                        int current = Convert.ToInt32(ReadStat(target, new string[] { statKey }));
+                        int delta = targetVal - current;
+                        if (delta != 0)
+                        {
+                            var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                            if (primEnum != null)
+                            {
+                                if (delta < 0) delta = 0; // don't decrease via this path
+                                method.Invoke(target, new object[] { primEnum, delta });
+                                return;
+                            }
+                        }
+                    }
+                }
+                var m2 = t.GetMethod("SetStatValue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (m2 != null && m2.GetParameters().Length == 2)
+                {
+                    var p1 = m2.GetParameters()[0]; var p2 = m2.GetParameters()[1];
+                    object val = value;
+                    if (p2.ParameterType == typeof(int)) { try { val = Convert.ToInt32(value); } catch { } }
+                    if (p2.ParameterType == typeof(float)) { try { val = Convert.ToSingle(value); } catch { } }
+                    if (p1.ParameterType == typeof(string)) { m2.Invoke(target, new object[] { (object)statKey, val }); return; }
+                    var ev = ResolveStatModifierEnumValue(statKey);
+                    if (ev != null && p1.ParameterType.IsEnum && ev.GetType() == p1.ParameterType)
+                    { m2.Invoke(target, new object[] { ev, val }); return; }
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("TrySetStat failed: " + e.Message); }
+        }
+
+        private bool IsPrimaryStatKey(string statKey)
+        {
+            return string.Equals(statKey, "Physique", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Stamina", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Intuition", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(statKey, "Swiftness", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void SetPrimaryStatSafe(object statsObj, string statKey, int targetValue)
+        {
+            try
+            {
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                var t = statsObj.GetType();
+                var getData = t.GetMethod("GetPrimaryStatData", flags);
+                var setBaseStat = t.GetMethod("SetBaseStat", flags);
+                var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                var statEnum = ResolveStatModifierEnumValue(statKey);
+                if (getData == null || setBaseStat == null || primEnum == null || statEnum == null) { TrySetStat(statsObj, statKey, targetValue); return; }
+                var psd = getData.Invoke(statsObj, new object[] { primEnum });
+                if (psd != null)
+                {
+                    var psdType = psd.GetType();
+                    var baseValue = Convert.ToInt32(psdType.GetProperty("BaseValue").GetValue(psd, null));
+                    var customValue = Convert.ToInt32(psdType.GetProperty("CustomValue").GetValue(psd, null));
+                    var maxCustom = Convert.ToInt32(psdType.GetProperty("MaxCustomValue").GetValue(psd, null));
+                    var growth = Convert.ToSingle(psdType.GetProperty("GrowthValue").GetValue(psd, null));
+                    int growthBase = Mathf.RoundToInt(growth);
+                    int minBase = growthBase;
+                    int maxBase = growthBase + maxCustom;
+                    targetValue = Mathf.Clamp(targetValue, minBase, maxBase);
+                    int desiredCustom = Mathf.Clamp(targetValue - growthBase, 0, maxCustom);
+
+                    if (desiredCustom != customValue)
+                    {
+                        setBaseStat.Invoke(statsObj, new object[] { statEnum, (float)desiredCustom });
+                        if (string.Equals(statKey, "Stamina", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int deltaCustom = desiredCustom - customValue;
+                            if (deltaCustom != 0)
+                            {
+                                float curHp = 0f;
+                                object curHpObj = ReadStat(statsObj, new string[] { "GetCurrentHP", "currentHP", "CurrentHP", "HPCurrent" });
+                                try { if (curHpObj != null) curHp = Convert.ToSingle(curHpObj); } catch { }
+                                var updateHp = t.GetMethod("UpdateCurrentHP", flags);
+                                if (updateHp != null)
+                                {
+                                    updateHp.Invoke(statsObj, new object[] { curHp + (float)(deltaCustom * 5) });
+                                }
+                            }
+                        }
+                    }
+                    else if (targetValue != baseValue)
+                    {
+                        // If growth rounding caused a mismatch, force exact custom from the clamped target.
+                        setBaseStat.Invoke(statsObj, new object[] { statEnum, (float)desiredCustom });
+                    }
+                }
+            }
+            catch
+            {
+                TrySetStat(statsObj, statKey, targetValue);
+            }
+        }
+
+        private object ResolveStatModifierEnumValue(string statKey)
+        {
+            return ResolveEnumValue("TeamNimbus.CloudMeadow.StatModifiers", statKey) ??
+                   ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.StatModifiers", statKey) ??
+                   ResolveEnumValue("StatModifiers", statKey);
+        }
+
+        private string GetStatDisplayLabel(object statsObj, string statKey)
+        {
+            if (IsPrimaryStatKey(statKey))
+            {
+                int effective;
+                int baseValue;
+                float growth;
+                int custom;
+                int maxCustom;
+                if (TryGetPrimaryStatInfo(statsObj, statKey, out effective, out baseValue, out growth, out custom, out maxCustom))
+                {
+                    if (effective != baseValue)
+                    {
+                        return string.Format("{0} (base {1} | G {2:0.#} + C {3}/{4})", effective, baseValue, growth, custom, maxCustom);
+                    }
+                    return string.Format("{0} (G {1:0.#} + C {2}/{3})", baseValue, growth, custom, maxCustom);
+                }
+            }
+
+            object cur = ReadStat(statsObj, new string[] { statKey });
+            return cur != null ? cur.ToString() : "n/a";
+        }
+
+        private bool TryGetPrimaryStatInfo(object statsObj, string statKey, out int effectiveValue, out int baseValue, out float growthValue, out int customValue, out int maxCustomValue)
+        {
+            effectiveValue = 0;
+            baseValue = 0;
+            growthValue = 0f;
+            customValue = 0;
+            maxCustomValue = 0;
+
+            try
+            {
+                var t = statsObj.GetType();
+                var getData = t.GetMethod("GetPrimaryStatData", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var primEnum = ResolveEnumValue("TeamNimbus.CloudMeadow.Monsters.PrimaryStat", statKey) ?? ResolveEnumValue("PrimaryStat", statKey);
+                if (getData == null || primEnum == null) return false;
+
+                var psd = getData.Invoke(statsObj, new object[] { primEnum });
+                if (psd == null) return false;
+
+                var psdType = psd.GetType();
+                baseValue = Convert.ToInt32(psdType.GetProperty("BaseValue").GetValue(psd, null));
+                growthValue = Convert.ToSingle(psdType.GetProperty("GrowthValue").GetValue(psd, null));
+                customValue = Convert.ToInt32(psdType.GetProperty("CustomValue").GetValue(psd, null));
+                maxCustomValue = Convert.ToInt32(psdType.GetProperty("MaxCustomValue").GetValue(psd, null));
+
+                object effectiveObj = InvokeGetStatValue(statsObj, statKey);
+                if (effectiveObj != null)
+                {
+                    effectiveValue = Mathf.RoundToInt(Convert.ToSingle(effectiveObj));
+                }
+                else
+                {
+                    effectiveValue = baseValue;
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void TrySetMember(object target, string memberName, object value)
+        {
+            try
+            {
+                var t = target.GetType();
+                var prop = t.GetProperty(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (prop != null && prop.CanWrite)
+                {
+                    prop.SetValue(target, value, null);
+                    return;
+                }
+                var field = t.GetField(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (field != null)
+                {
+                    field.SetValue(target, value);
+                    return;
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("TrySetMember failed: " + e.Message); }
+        }
+
+        private void TrySetEnum(object target, string memberName, string enumName)
+        {
+            try
+            {
+                var t = target.GetType();
+                var prop = t.GetProperty(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (prop != null)
+                {
+                    var et = prop.PropertyType;
+                    var val = Enum.Parse(et, enumName, true);
+                    prop.SetValue(target, val, null);
+                    return;
+                }
+                var field = t.GetField(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (field != null)
+                {
+                    var et = field.FieldType;
+                    var val = Enum.Parse(et, enumName, true);
+                    field.SetValue(target, val);
+                    return;
+                }
+            }
+            catch (Exception e) { Plugin.Log.LogWarning("TrySetEnum failed: " + e.Message); }
+        }
+    }
+}

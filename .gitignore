@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# Logs
+BepInEx/LogOutput.log
+BepInEx/plugins/CloudMeadowCreativeMode/creative_startup.log
+BepInEx/plugins/CloudMeadowCreativeMode/backups/
+BepInEx/plugins/CloudMeadowCreativeMode/exports/
+BepInEx/plugins/CloudMeadowCreativeMode/farm_traits_report.txt
+BepInEx/plugins/CloudMeadowCreativeMode/all_traits_catalog.txt
+BepInEx/plugins/CloudMeadowCreativeMode/compatibility_report.txt
+BepInEx/plugins/CloudMeadowCreativeMode/traits_report.txt
+BepInEx/plugins/CloudMeadowCreativeMode/family_tree.tsv
+
+# Release
+release/
+
+# OS
+Thumbs.db
+.DS_Store
