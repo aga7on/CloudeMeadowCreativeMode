@@ -12,7 +12,7 @@ namespace CloudMeadow.CreativeMode
     {
         public const string PLUGIN_GUID = "dev.rovodev.cloudmeadow.creativemode";
         public const string PLUGIN_NAME = "Cloud Meadow Creative Mode";
-        public const string PLUGIN_VERSION = "6.0.1";
+        public const string PLUGIN_VERSION = "6.0.2";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;

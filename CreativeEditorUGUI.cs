@@ -336,6 +336,7 @@ namespace CloudMeadow.CreativeMode
                     string[] abilityLines = GameApi.GetProtagonistAbilitySummary();
                     for (int ali = 0; ali < abilityLines.Length; ali++) AddLine(body.transform, abilityLines[ali]);
                     AddAction(body.transform, "Clear ability cooldowns", delegate { GameApi.ClearProtagonistCooldowns(); RefreshModule(); });
+                    AddAction(body.transform, "Safely repair invalid ability states", delegate { GameApi.RepairProtagonistAbilityStates(); RefreshModule(); });
                     for (int asi = 0; asi < abilityLines.Length; asi++)
                     {
                         int capturedSlot = asi;

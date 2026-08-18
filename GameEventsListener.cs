@@ -13,7 +13,6 @@ namespace CloudMeadow.CreativeMode
 
         private bool _monsterDebugDumped;
         private int _frames;
-        private bool _abilityRepairDone;
         private string _debugLogPath;
 
         private void OnEnable()
@@ -28,7 +27,6 @@ namespace CloudMeadow.CreativeMode
                 System.IO.File.WriteAllText(_debugLogPath, "=== Monster Debug Dump ===\n");
                 _monsterDebugDumped = false;
                 _frames = 0;
-                _abilityRepairDone = false;
             }
             catch { }
         }
@@ -41,11 +39,6 @@ namespace CloudMeadow.CreativeMode
         private void Update()
         {
             _frames++;
-            if (!_abilityRepairDone && _frames >= 30 && GameApi.Ready)
-            {
-                GameApi.RepairProtagonistAbilityStates();
-                _abilityRepairDone = true;
-            }
             // Wait a few frames after load, then attempt dump once
             if (!_monsterDebugDumped && _frames >= 180)
             {

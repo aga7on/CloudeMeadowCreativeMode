@@ -54,10 +54,25 @@ BepInEx plugin for Cloud Meadow - Universal Creative Editor.
 
 ## Installation
 
-1. Close Cloud Meadow
-2. Extract `BepInEx` folder to game root directory (`Cloud Meadow/`)
-3. Launch game
-4. Press **F6** to open Creative Editor
+### Players (prebuilt mod)
+
+1. Close Cloud Meadow.
+2. Download **BepInEx 5 x64** and extract the **contents** of its archive into the game folder — the folder containing `Cloud Meadow.exe`. After this step that folder must contain `BepInEx/`, `winhttp.dll`, and `doorstop_config.ini`.
+3. Extract the release ZIP into the game folder, or copy only `CloudMeadow.CreativeMode.dll` into `Cloud Meadow/BepInEx/plugins/`.
+4. Start the game normally through Steam and press **F6** after a save has loaded.
+
+Do not place the DLL in `Cloud Meadow_Data`, and do not copy source `.cs` files into `BepInEx/plugins`.
+
+### Developers (this source archive)
+
+Extract the `CloudeMeadowCreativeMode-main` folder directly into the game folder, so these two paths exist side by side:
+
+```text
+Cloud Meadow/Cloud Meadow_Data/
+Cloud Meadow/CloudeMeadowCreativeMode-main/
+```
+
+Install BepInEx as above, then run `./build-release.ps1` from the source folder. Copy `bin/CloudMeadow.CreativeMode.dll` to `BepInEx/plugins/` before launching the game.
 
 ## Hotkeys
 
@@ -78,6 +93,12 @@ BepInEx plugin for Cloud Meadow - Universal Creative Editor.
 - `bin/`, `obj/`, `.vs/`, logs excluded from repo
 
 ## Changelog
+
+### v6.0.2
+- Stopped automatic ability-state repair from rewriting ability slots during UI refresh or game load; the guarded repair is now a manual action.
+- Fixed stat-point editing when the `statPoints` backing field is declared on a base type.
+- The stat editor now reports the game-enforced range when a requested value is capped.
+- Expanded trait discovery to include singleton and separate species-trait definitions, including special traits such as Nine Lives.
 
 ### v6.0.1
 - Bloodline traits properly detected and displayed with [Bloodline] tag

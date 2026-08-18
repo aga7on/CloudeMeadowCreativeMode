@@ -40,7 +40,7 @@ namespace CloudMeadow.CreativeMode
                 if (level < 1) level = 1;
                 if (level > GameManager.MaxLevel) level = GameManager.MaxLevel;
                 var p = GameManager.Status.ProtagonistStats;
-                var field = p.GetType().GetField("level", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var field = FindInstanceField(p.GetType(), "level");
                 if (field == null) throw new MissingFieldException(p.GetType().FullName, "level");
                 field.SetValue(p, level);
                 LogBuffer.Add("Protagonist level -> " + level);
@@ -82,7 +82,7 @@ namespace CloudMeadow.CreativeMode
                 int growth = Mathf.RoundToInt(data.GrowthValue);
                 int desiredCustom = Mathf.Clamp(targetValue - growth, 0, data.MaxCustomValue);
                 p.IncreasePrimaryStatCustomValue(stat, desiredCustom - data.CustomValue);
-                LogBuffer.Add(stat + " -> " + p.GetPrimaryStatData(stat).BaseValue);
+                ReportPrimaryStatResult(p, stat, targetValue);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistPrimaryStat failed: " + e.Message); }
         }
@@ -107,6 +107,7 @@ namespace CloudMeadow.CreativeMode
                 var data = stats.GetPrimaryStatData(stat); int growth = Mathf.RoundToInt(data.GrowthValue);
                 int desiredCustom = Mathf.Clamp(targetValue - growth, 0, data.MaxCustomValue);
                 stats.IncreasePrimaryStatCustomValue(stat, desiredCustom - data.CustomValue);
+                ReportPrimaryStatResult(stats, stat, targetValue);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetPrimaryStat failed: " + e.Message); }
         }
@@ -127,7 +128,7 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 if (value < 0f) value = 0f; var p = GameManager.Status.ProtagonistStats;
-                var field = p.GetType().GetField("experienceSinceLastLevel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var field = FindInstanceField(p.GetType(), "experienceSinceLastLevel");
                 if (field == null) throw new MissingFieldException("experienceSinceLastLevel"); field.SetValue(p, value);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistXP failed: " + e.Message); }
@@ -138,8 +139,9 @@ namespace CloudMeadow.CreativeMode
             try
             {
                 if (value < 0) value = 0; var p = GameManager.Status.ProtagonistStats;
-                var field = p.GetType().GetField("statPoints", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var field = FindInstanceField(p.GetType(), "statPoints");
                 if (field == null) throw new MissingFieldException("statPoints"); field.SetValue(p, value);
+                Banner("Player stat points -> " + value);
             }
             catch (Exception e) { Plugin.Log.LogWarning("SetProtagonistStatPoints failed: " + e.Message); }
         }
@@ -170,7 +172,6 @@ namespace CloudMeadow.CreativeMode
             var lines = new System.Collections.Generic.List<string>();
             try
             {
-                RepairProtagonistAbilityStates();
                 int index = 0; foreach (var state in GameManager.Status.ProtagonistStats.EnumerateAbilityStates())
                     lines.Add("Slot " + (index++) + ": " + (state.Asset != null ? state.Asset.name : "(missing)") + " | State " + state.ActiveStateIndex + " | Cooldown " + state.TurnsRemainingOnCooldown);
             }
@@ -193,14 +194,46 @@ namespace CloudMeadow.CreativeMode
                 {
                     object abilityData = data[slot]; if (abilityData == null) continue;
                     var stateProp = abilityData.GetType().GetProperty("StateIndex", flags);
-                    int current = stateProp != null ? Convert.ToInt32(stateProp.GetValue(abilityData, null)) : 0;
+                    if (stateProp == null) continue;
+                    int current = Convert.ToInt32(stateProp.GetValue(abilityData, null));
                     int count = GetProtagonistAbilityStateCount(protagonist, slot);
-                    int safe = count > 0 ? Mathf.Clamp(current, 0, count - 1) : 0;
+                    // A missing count means the current game version exposes no safe
+                    // upper bound. Never rewrite the save in that case.
+                    if (count <= 0) continue;
+                    int safe = Mathf.Clamp(current, 0, count - 1);
                     if (current != safe) { protagonist.ChangeAbilityState(slot, safe); repaired++; LogBuffer.Add("Repaired player ability slot " + slot + ": " + current + " -> " + safe); }
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning("RepairProtagonistAbilityStates failed: " + e.Message); }
             return repaired;
+        }
+
+        private static System.Reflection.FieldInfo FindInstanceField(Type type, string name)
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;
+            while (type != null)
+            {
+                var field = type.GetField(name, flags);
+                if (field != null) return field;
+                type = type.BaseType;
+            }
+            return null;
+        }
+
+        private static void ReportPrimaryStatResult(PartyCharacterStats stats, PrimaryStat stat, int requested)
+        {
+            try
+            {
+                var data = stats.GetPrimaryStatData(stat);
+                int actual = Mathf.RoundToInt(data.BaseValue);
+                int growth = Mathf.RoundToInt(data.GrowthValue);
+                int maximum = growth + data.MaxCustomValue;
+                LogBuffer.Add(stat + " -> " + actual + " (requested " + requested + ", allowed " + growth + "-" + maximum + ")");
+                if (actual != requested)
+                    Banner(stat + " set to " + actual + "; this character's allowed range is " + growth + "-" + maximum);
+            }
+            catch { }
         }
 
         private static int GetProtagonistAbilityStateCount(object protagonist, int slot)
@@ -1167,17 +1200,21 @@ namespace CloudMeadow.CreativeMode
                 var traitsByType = ReflectionUtil.GetPrivateMethod(lib, "ResolveMonsterTraitsByType").Invoke(lib, new object[] { species });
                 if (traitsByType == null) return new object[0];
 
-                var arr = traitsByType.GetType().GetField("OtherSpeciesTraits").GetValue(traitsByType) as System.Array;
-                if (arr == null) return new object[0];
-
-                var list = new System.Collections.Generic.List<object>(arr.Length);
-                int i;
-                for (i = 0; i < arr.Length; i++)
+                // Special species traits can be stored separately from OtherSpeciesTraits.
+                var list = new System.Collections.Generic.List<object>();
+                var fields = traitsByType.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                for (int i = 0; i < fields.Length; i++)
                 {
-                    var v = arr.GetValue(i);
-                    if (v != null) list.Add(v);
+                    if (fields[i].Name.IndexOf("Species", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    object value = fields[i].GetValue(traitsByType);
+                    var collection = value as System.Collections.IEnumerable;
+                    if (collection != null && !(value is string))
+                    {
+                        foreach (var item in collection) if (item != null) list.Add(item);
+                    }
+                    else if (value != null) list.Add(value);
                 }
-                return list.ToArray();
+                return DedupTraitDefinitionsByCode(FilterToDefinitionLike(list.ToArray()));
             }
             catch { }
             return new object[0];
@@ -3195,8 +3232,9 @@ namespace CloudMeadow.CreativeMode
                     var f = fields[i];
                     object col = null;
                     try { col = f.IsStatic ? f.GetValue(null) : (lib != null ? f.GetValue(lib) : null); } catch { col = null; }
-                    var en = col as System.Collections.IEnumerable; if (en == null || col is string) continue;
-                    foreach (var d in en) if (d != null) res.Add(d);
+                    var en = col as System.Collections.IEnumerable;
+                    if (en != null && !(col is string)) foreach (var d in en) if (d != null) res.Add(d);
+                    else if (col != null) res.Add(col);
                 }
                 // Methods that enumerate all
                 var methods = libType.GetMethods(flags);
@@ -3214,7 +3252,7 @@ namespace CloudMeadow.CreativeMode
                         catch { }
                     }
                 }
-                return FilterToDefinitionLike(res.ToArray());
+                return DedupTraitDefinitionsByCode(FilterToDefinitionLike(res.ToArray()));
             }
             catch { }
             return new object[0];
@@ -3413,14 +3451,26 @@ namespace CloudMeadow.CreativeMode
             {
                 string speciesName = GetMonsterSpecies(monster);
                 var bloodline = GetTraitDefinitionsForSpecies(speciesName);
+                var speciesTraits = GetSpeciesTraitDefinitionsForSpecies(speciesName);
                 var universal = GetUniversalTraitDefinitions();
                 var allBloodline = GetAllBloodlineTraitDefinitionsForAllSpecies();
                 // Merge unique by reference
                 var list = new System.Collections.Generic.List<object>();
                 for (int i = 0; i < bloodline.Length; i++) if (bloodline[i] != null && list.IndexOf(bloodline[i]) < 0) list.Add(bloodline[i]);
+                for (int i = 0; i < speciesTraits.Length; i++) if (speciesTraits[i] != null && list.IndexOf(speciesTraits[i]) < 0) list.Add(speciesTraits[i]);
                 for (int i = 0; i < universal.Length; i++) if (universal[i] != null && list.IndexOf(universal[i]) < 0) list.Add(universal[i]);
                 for (int i = 0; i < allBloodline.Length; i++) if (allBloodline[i] != null && list.IndexOf(allBloodline[i]) < 0) list.Add(allBloodline[i]);
-                return list.ToArray();
+                // Include singleton definitions from the library. This covers special
+                // bloodline traits that are not stored in the per-species arrays.
+                var all = GetAllTraitDefinitions();
+                for (int i = 0; i < all.Length; i++)
+                {
+                    var def = all[i];
+                    if (def == null || list.IndexOf(def) >= 0) continue;
+                    var kind = ResolveMonsterTraitKind(def);
+                    if (kind == MonsterTraitKind.Universal || kind == MonsterTraitKind.Bloodline) list.Add(def);
+                }
+                return DedupTraitDefinitionsByCode(list.ToArray());
             }
             catch { }
             return new object[0];

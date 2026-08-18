@@ -2,7 +2,12 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $here
 try {
-  $csc = 'C:\Program Files\dotnet\sdk\10.0.102\Roslyn\bincore\csc.dll'
+  $dotnetRoot = Split-Path -Parent (Get-Command dotnet -ErrorAction Stop).Source
+  $csc = Get-ChildItem -LiteralPath (Join-Path $dotnetRoot 'sdk') -Recurse -File -Filter csc.dll |
+    Where-Object { $_.FullName -match '\\Roslyn\\bincore\\csc\.dll$' } |
+    Sort-Object FullName -Descending |
+    Select-Object -First 1 -ExpandProperty FullName
+  if (-not $csc) { throw 'Could not locate the .NET C# compiler (csc.dll).' }
   $refs = @(
     '/noconfig','/nostdlib+','/target:library','/optimize+','/deterministic+','/langversion:5','/out:bin\CloudMeadow.CreativeMode.dll',
     '/reference:..\Cloud Meadow_Data\Managed\mscorlib.dll',
